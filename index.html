@@ -1,0 +1,1321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Lands n Lords</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230c3b41'/%3E%3Cpath d='M6 16 16 8l10 8M9 14v8h14v-8M5 25h22' fill='none' stroke='%23f4b740' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<meta name="description" content="Houses for rent, houses for sale and plots on a satellite map.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@600;700&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
+<style>
+/* Layout: one-screen map app. Top bar with filter chips, full-height satellite map,
+   listing details in a bottom sheet (side panel on wide screens). */
+:root {
+  color-scheme: light;
+  --harbour: #0d3b44;      /* top bar, primary buttons */
+  --harbour-deep: #08272d;
+  --sheet: #f5f8f8;        /* bottom sheet surface */
+  --ink: #12262a;
+  --ink-soft: #55696d;
+  --line: #d5dfe0;
+  --on-dark: #eef6f6;
+  --rent: #1f9d55;         /* green pins */
+  --sale: #d93a3a;         /* red pins */
+  --lease: #2a7de1;        /* blue pins */
+  --bnb: #8b3fd9;          /* purple pins */
+  --whatsapp: #128c4a;
+  --font-display: "Space Grotesk", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; margin: 0; }
+body {
+  background: var(--harbour-deep);
+  color: var(--ink);
+  font: 15px/1.45 var(--font-body);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+button { font: inherit; color: inherit; cursor: pointer; }
+:focus-visible { outline: 3px solid #7fd6e2; outline-offset: 2px; }
+
+/* ---------- Top bar ---------- */
+.bar {
+  background: var(--harbour);
+  color: var(--on-dark);
+  padding-top: calc(10px + env(safe-area-inset-top, 0px));
+  padding-bottom: 10px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 20px;
+  z-index: 1200;
+  box-shadow: 0 2px 10px rgba(0,0,0,.35);
+}
+.bar-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex: 1 1 auto; min-width: 0; }
+.brand { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+.seg { display: inline-flex; flex: none; border: 1px solid rgba(255,255,255,.28); border-radius: 10px; overflow: hidden; }
+.seg button { padding: 7px 14px; border: 0; background: transparent; color: var(--on-dark); font-size: 14px; font-weight: 600; }
+.seg button[aria-pressed="true"] { background: var(--on-dark); color: var(--harbour-deep); }
+@media (max-width: 560px) { .brand-tag { display: none; } }
+.brand-name { font: 700 20px/1.1 var(--font-display); letter-spacing: -.01em; white-space: nowrap; }
+.brand-tag { font-size: 12px; opacity: .75; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chips { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; max-width: 100%; padding: 2px; }
+.chips::-webkit-scrollbar { display: none; }
+.chip {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 7px 12px;
+  border: 1px solid rgba(255,255,255,.28);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--on-dark);
+  font-size: 13px; font-weight: 500;
+  white-space: nowrap;
+}
+.chip[aria-pressed="true"] { background: var(--on-dark); color: var(--harbour-deep); border-color: var(--on-dark); }
+.chip .dot { width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid #fff; }
+.chip .n { font-variant-numeric: tabular-nums; opacity: .7; }
+.dot.rent { background: var(--rent); } .dot.sale { background: var(--sale); } .dot.lease { background: var(--lease); } .dot.bnb { background: var(--bnb); }
+
+/* ---------- Map ---------- */
+.stage { position: relative; flex: 1; min-height: 0; }
+#map { position: absolute; inset: 0; background: #2c3f3a; }
+.tools {
+  position: absolute; z-index: 1100;
+  right: max(12px, env(safe-area-inset-right, 0px));
+  bottom: calc(22px + env(safe-area-inset-bottom, 0px));
+  display: flex; flex-direction: column; gap: 8px;
+}
+.tool {
+  width: 44px; height: 44px;
+  border: 0; border-radius: 12px;
+  background: #fff; color: var(--harbour-deep);
+  font-size: 22px; line-height: 1; font-weight: 600;
+  box-shadow: 0 2px 8px rgba(0,0,0,.4);
+  display: grid; place-items: center;
+}
+.tool svg { width: 20px; height: 20px; }
+.tool.text { font: 600 12px/1 var(--font-body); }
+.suggest {
+  position: absolute; z-index: 1150;
+  top: 62px;
+  left: max(12px, env(safe-area-inset-left, 0px));
+  right: max(12px, env(safe-area-inset-right, 0px));
+  max-width: 420px;
+  background: #fff; border-radius: 12px;
+  box-shadow: 0 4px 14px rgba(0,0,0,.4);
+  overflow: hidden;
+  display: flex; flex-direction: column;
+}
+.suggest button { border: 0; border-top: 1px solid var(--line); background: #fff; color: var(--ink); text-align: left; padding: 12px 14px; font-size: 15px; }
+.suggest button:first-child { border-top: 0; }
+.suggest button small { display: block; color: var(--ink-soft); font-size: 12px; margin-top: 2px; }
+.suggest button:hover, .suggest button:focus-visible { background: #eef4f5; outline: none; }
+.search {
+  position: absolute; z-index: 1100;
+  top: 10px;
+  left: max(12px, env(safe-area-inset-left, 0px));
+  right: max(12px, env(safe-area-inset-right, 0px));
+  max-width: 420px;
+  display: flex;
+  background: #fff; border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.4);
+  overflow: hidden;
+}
+.search input { flex: 1; min-width: 0; border: 0; padding: 12px 14px; font: inherit; font-size: 16px; color: var(--ink); background: transparent; }
+.search input:focus { outline: none; }
+.search:focus-within { outline: 3px solid #7fd6e2; }
+.search button { border: 0; background: var(--harbour); color: var(--on-dark); padding: 0 16px; font-weight: 600; }
+.stay { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.stay label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--ink-soft); min-width: 0; }
+.stay input { width: 100%; min-width: 0; padding: 10px; border: 1px solid var(--line); border-radius: 10px; background: #fff; color: var(--ink); font: inherit; font-size: 16px; }
+.notice {
+  position: absolute; z-index: 1100;
+  top: 68px; left: 50%; transform: translateX(-50%);
+  width: min(92%, 460px);
+  background: rgba(8,39,45,.92); color: var(--on-dark);
+  padding: 10px 14px; border-radius: 10px;
+  font-size: 13px; text-align: center;
+}
+.toast {
+  position: absolute; z-index: 1400;
+  left: 50%; transform: translateX(-50%);
+  bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  background: var(--harbour-deep); color: var(--on-dark);
+  padding: 10px 16px; border-radius: 999px;
+  font-size: 13px; max-width: 90%;
+  box-shadow: 0 4px 14px rgba(0,0,0,.4);
+}
+
+/* ---------- Pins ---------- */
+.pin-wrap { background: none; border: 0; }
+.pin {
+  width: 30px; height: 30px;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  transform-origin: 50% 50%;
+  border: 2.5px solid #fff;
+  box-shadow: 0 2px 6px rgba(0,0,0,.55);
+  display: grid; place-items: center;
+  transition: scale .15s ease;
+}
+.pin b { transform: rotate(45deg); color: #fff; font: 700 13px/1 var(--font-display); }
+.pin.rent { background: var(--rent); } .pin.sale { background: var(--sale); } .pin.lease { background: var(--lease); } .pin.bnb { background: var(--bnb); }
+.pin.on { scale: 1.35; }
+@media (prefers-reduced-motion: reduce) { .pin, .sheet { transition: none !important; } }
+
+/* ---------- Listing sheet ---------- */
+.sheet {
+  position: absolute; z-index: 1300;
+  left: 0; right: 0; bottom: 0;
+  max-height: 80%;
+  background: var(--sheet);
+  border-radius: 18px 18px 0 0;
+  box-shadow: 0 -6px 24px rgba(0,0,0,.45);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-top: 14px;
+  padding-bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex; flex-direction: column; gap: 14px;
+}
+@media (min-width: 820px) {
+  .sheet { left: 16px; right: auto; bottom: 16px; width: 420px; max-height: calc(100% - 32px); border-radius: 18px; }
+}
+.sheet-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.badges { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px 10px; border-radius: 999px;
+  font-size: 12px; font-weight: 600; letter-spacing: .02em;
+  background: #e3ebec; color: var(--ink);
+}
+.badge.rent { background: #d8f1e2; color: #0f5c31; }
+.badge.sale { background: #fbdcdc; color: #8f1f1f; }
+.badge.lease { background: #dbe8fb; color: #174a8c; }
+.badge.bnb { background: #eadcfb; color: #4d1f85; }
+.badge.sample { background: transparent; border: 1px dashed var(--ink-soft); color: var(--ink-soft); font-weight: 500; }
+.sheet h2 { margin: 0; font: 700 20px/1.2 var(--font-display); text-wrap: balance; }
+.where { margin: 3px 0 0; color: var(--ink-soft); font-size: 14px; }
+.close {
+  flex: none; width: 36px; height: 36px;
+  border: 0; border-radius: 50%;
+  background: #e3ebec; font-size: 20px; line-height: 1;
+}
+.price { font: 700 24px/1.1 var(--font-display); font-variant-numeric: tabular-nums; }
+.facts { margin: 4px 0 0; color: var(--ink-soft); font-size: 14px; }
+.desc { margin: 0; max-width: 65ch; }
+.video { position: relative; width: 100%; aspect-ratio: 16 / 9; background: #0b1c20; border-radius: 12px; overflow: hidden; }
+.video iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.video-none { display: grid; place-items: center; color: #9db4b8; font-size: 13px; }
+.video-link { font-size: 13px; color: var(--harbour); }
+.photos { display: flex; gap: 8px; overflow-x: auto; }
+.photos img { height: 130px; border-radius: 10px; flex: none; max-width: none; }
+.contact { border-top: 1px solid var(--line); padding-top: 14px; display: flex; flex-direction: column; gap: 10px; }
+.contact p { margin: 0; font-size: 14px; }
+.contact .who { font-weight: 600; }
+.contact .num { font: 600 18px/1.2 var(--font-display); font-variant-numeric: tabular-nums; user-select: all; }
+.contact .hint { color: var(--ink-soft); font-size: 13px; }
+.btns { display: flex; flex-wrap: wrap; gap: 8px; }
+.btn {
+  flex: 1 1 140px;
+  display: inline-flex; justify-content: center; align-items: center; gap: 8px;
+  padding: 12px 14px; min-height: 46px;
+  border: 1px solid var(--harbour); border-radius: 12px;
+  background: transparent; color: var(--harbour);
+  font-weight: 600; text-decoration: none; text-align: center;
+}
+.btn.wa { background: var(--whatsapp); border-color: var(--whatsapp); color: #fff; }
+.btn.quiet { flex: 0 0 auto; border-color: var(--line); color: var(--ink-soft); font-weight: 500; }
+
+
+/* ---------- Account panel ---------- */
+.fab {
+  position: absolute; z-index: 1100;
+  left: max(12px, env(safe-area-inset-left, 0px));
+  bottom: calc(22px + env(safe-area-inset-bottom, 0px));
+  padding: 12px 18px; min-height: 46px;
+  border: 0; border-radius: 999px;
+  background: var(--harbour); color: var(--on-dark);
+  font-weight: 600; box-shadow: 0 2px 10px rgba(0,0,0,.5);
+}
+.panel { position: fixed; inset: 0; z-index: 1600; background: rgba(4,18,21,.72); display: flex; align-items: flex-end; justify-content: center; }
+.panel-in {
+  width: 100%; max-width: 540px; max-height: 94%; overflow-y: auto; overscroll-behavior: contain;
+  background: var(--sheet); border-radius: 18px 18px 0 0;
+  padding-top: 16px;
+  padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex; flex-direction: column; gap: 14px;
+}
+@media (min-width: 700px) { .panel { align-items: center; } .panel-in { border-radius: 18px; max-height: 90%; } }
+.panel-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.panel-head h2 { margin: 0; font: 700 20px/1.2 var(--font-display); }
+.panel-in .btn { flex: 0 0 auto; }
+.field { display: flex; flex-direction: column; gap: 5px; font-size: 13px; color: var(--ink-soft); min-width: 0; }
+.field input, .field select, .field textarea {
+  width: 100%; min-width: 0; padding: 11px 12px;
+  border: 1px solid var(--line); border-radius: 10px;
+  background: #fff; color: var(--ink); font: inherit; font-size: 16px;
+}
+.field textarea { min-height: 84px; resize: vertical; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.msg { margin: 0; font-size: 14px; max-width: 65ch; }
+.msg.err { color: #b3261e; } .msg.ok { color: #0f5c31; } .msg.soft { color: var(--ink-soft); }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.item { border: 1px solid var(--line); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 8px; background: #fff; min-width: 0; }
+.item h3 { margin: 0; font: 600 16px/1.3 var(--font-display); }
+.item p { margin: 0; font-size: 14px; overflow-wrap: anywhere; }
+.pill { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; background: #e3ebec; color: var(--ink); }
+.pill.pending { background: #fdeccd; color: #6b4700; } .pill.active { background: #d8f1e2; color: #0f5c31; } .pill.rejected { background: #fbdcdc; color: #8f1f1f; }
+.thumbs { display: flex; gap: 6px; overflow-x: auto; }
+.thumbs img { height: 72px; border-radius: 8px; max-width: none; flex: none; }
+.tabs { display: flex; gap: 8px; }
+.btn.small { min-height: 38px; padding: 8px 14px; }
+.btn.danger { border-color: #b3261e; color: #b3261e; }
+
+/* ---------- Design refresh ---------- */
+/* Deep harbour teal for structure, marigold for the one action that matters (posting), pin colours for deal types. */
+:root {
+  --harbour: #0c3b41;
+  --harbour-deep: #06262a;
+  --sheet: #f6f8f7;
+  --ink: #10272b;
+  --ink-soft: #5b6f72;
+  --line: #dde6e5;
+  --marigold: #f4b740;
+  --marigold-ink: #3a2700;
+  --rent: #16a34a;
+  --sale: #e0393e;
+  --lease: #2b7de9;
+  --bnb: #8b45e0;
+  --font-display: "Sora", "Segoe UI", system-ui, sans-serif;
+  --shadow-1: 0 1px 2px rgba(6,38,42,.14), 0 6px 16px rgba(6,38,42,.2);
+  --shadow-2: 0 -8px 40px rgba(6,38,42,.32);
+}
+.bar {
+  background: linear-gradient(180deg, #0f464d 0%, var(--harbour) 100%);
+  box-shadow: 0 6px 18px rgba(0,0,0,.28);
+  padding-bottom: 12px;
+  gap: 10px 20px;
+}
+.brand { align-items: center; gap: 10px; }
+.mark { width: 30px; height: 30px; flex: none; color: var(--marigold); }
+.brand-text { display: flex; flex-direction: column; min-width: 0; gap: 1px; }
+.brand-name { font-size: 19px; letter-spacing: -.02em; }
+.brand-tag { font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; opacity: .68; }
+.seg { border: 0; background: rgba(255,255,255,.1); padding: 3px; border-radius: 12px; gap: 2px; }
+.seg button { border-radius: 9px; padding: 7px 15px; font-size: 13.5px; color: rgba(238,246,246,.82); }
+.seg button[aria-pressed="true"] { background: #fff; color: var(--harbour-deep); box-shadow: 0 1px 3px rgba(0,0,0,.25); }
+.chip { border-color: rgba(255,255,255,.16); background: rgba(255,255,255,.06); padding: 7px 13px; }
+.chip[aria-pressed="true"] { background: var(--marigold); border-color: var(--marigold); color: var(--marigold-ink); }
+.chip .dot { width: 9px; height: 9px; border-width: 2px; }
+
+.search {
+  top: 12px; border-radius: 14px; box-shadow: var(--shadow-1);
+  padding-left: 38px;
+  background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235b6f72' stroke-width='2.2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E") no-repeat 13px 50% / 18px;
+}
+.search input { padding: 13px 6px; }
+.search button { margin: 5px; border-radius: 10px; padding: 0 15px; font-size: 14px; }
+.suggest { top: 66px; border-radius: 14px; box-shadow: var(--shadow-1); }
+.notice { top: 70px; border-radius: 12px; }
+
+.tool { width: 46px; height: 46px; border-radius: 14px; box-shadow: var(--shadow-1); }
+.fab {
+  background: var(--marigold); color: var(--marigold-ink);
+  font-weight: 700; padding: 13px 20px; box-shadow: var(--shadow-1);
+}
+
+.pin { width: 32px; height: 32px; border-width: 3px; box-shadow: 0 3px 8px rgba(0,0,0,.45); }
+.pin b { font-size: 12px; }
+.pin.on { scale: 1.3; box-shadow: 0 0 0 6px rgba(255,255,255,.35), 0 4px 10px rgba(0,0,0,.5); }
+
+.sheet { border-radius: 22px 22px 0 0; box-shadow: var(--shadow-2); padding-top: 12px; gap: 16px; }
+.sheet::before { content: ""; flex: none; align-self: center; width: 40px; height: 4px; border-radius: 2px; background: #cbd6d5; }
+@media (min-width: 820px) { .sheet { border-radius: 20px; box-shadow: 0 12px 40px rgba(6,38,42,.4); padding-top: 18px; } .sheet::before { display: none; } }
+.sheet h2 { font-size: 21px; letter-spacing: -.015em; }
+.price { font-size: 26px; letter-spacing: -.02em; color: var(--harbour); }
+.close { background: #e6eeed; color: var(--ink); }
+.video { border-radius: 14px; }
+.photos img { border-radius: 12px; }
+.contact { border: 1px solid var(--line); border-radius: 16px; padding: 14px; background: #fff; }
+.btn { border-radius: 12px; }
+.btn:not(.wa):not(.quiet):not(.danger) { background: #fff; }
+.btn:disabled { opacity: .55; cursor: default; }
+
+.panel { backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); }
+.panel-in { border-radius: 22px 22px 0 0; box-shadow: var(--shadow-2); }
+@media (min-width: 700px) { .panel-in { border-radius: 20px; } }
+.field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: var(--harbour); box-shadow: 0 0 0 3px rgba(12,59,65,.15); }
+.item { border-radius: 14px; }
+
+/* ---------- Leaflet essentials (fallback if the CDN stylesheet is blocked) ---------- */
+.leaflet-pane, .leaflet-tile, .leaflet-marker-icon, .leaflet-marker-shadow, .leaflet-tile-container,
+.leaflet-pane > svg, .leaflet-pane > canvas, .leaflet-zoom-box, .leaflet-image-layer, .leaflet-layer { position: absolute; left: 0; top: 0; }
+.leaflet-container { overflow: hidden; -webkit-tap-highlight-color: transparent; font: inherit; background: #2c3f3a; }
+.leaflet-tile, .leaflet-marker-icon, .leaflet-marker-shadow { -webkit-user-select: none; user-select: none; -webkit-user-drag: none; }
+.leaflet-container.leaflet-touch-zoom { touch-action: pan-x pan-y; }
+.leaflet-container.leaflet-touch-drag { touch-action: pinch-zoom; }
+.leaflet-container.leaflet-touch-drag.leaflet-touch-zoom { touch-action: none; }
+.leaflet-container .leaflet-tile { max-width: none !important; max-height: none !important; width: 256px; height: 256px; padding: 0; }
+.leaflet-tile { visibility: hidden; }
+.leaflet-tile-loaded { visibility: inherit; }
+.leaflet-pane { z-index: 400; } .leaflet-tile-pane { z-index: 200; } .leaflet-overlay-pane { z-index: 400; }
+.leaflet-shadow-pane { z-index: 500; } .leaflet-marker-pane { z-index: 600; } .leaflet-tooltip-pane { z-index: 650; } .leaflet-popup-pane { z-index: 700; }
+.leaflet-map-pane canvas { z-index: 100; } .leaflet-map-pane svg { z-index: 200; }
+.leaflet-control { position: relative; z-index: 800; pointer-events: auto; float: left; clear: both; }
+.leaflet-top, .leaflet-bottom { position: absolute; z-index: 1000; pointer-events: none; }
+.leaflet-top { top: 0; } .leaflet-right { right: 0; } .leaflet-bottom { bottom: 0; } .leaflet-left { left: 0; }
+.leaflet-right .leaflet-control { float: right; }
+.leaflet-zoom-animated { transform-origin: 0 0; }
+.leaflet-zoom-anim .leaflet-zoom-animated { transition: transform .25s cubic-bezier(0,0,.25,1); }
+.leaflet-zoom-anim .leaflet-tile, .leaflet-pan-anim .leaflet-tile { transition: none; }
+.leaflet-zoom-anim .leaflet-zoom-hide { visibility: hidden; }
+.leaflet-interactive { cursor: pointer; }
+.leaflet-grab { cursor: grab; }
+.leaflet-marker-icon, .leaflet-marker-shadow, .leaflet-image-layer, .leaflet-pane > svg path, .leaflet-tile-container { pointer-events: none; }
+.leaflet-marker-icon.leaflet-interactive, .leaflet-pane > svg path.leaflet-interactive { pointer-events: auto; }
+.leaflet-container .leaflet-control-attribution { background: rgba(255,255,255,.75); margin: 0; padding: 0 6px; font-size: 10px; color: #333; }
+.leaflet-container .leaflet-control-attribution a { color: #0d3b44; }
+</style>
+</head>
+<body>
+
+<header class="bar">
+  <div class="bar-top">
+    <div class="brand">
+      <svg class="mark" viewBox="0 0 32 32" aria-hidden="true"><path d="M5 15.5 16 6.5l11 9M8.5 13v9.5h15V13M3.5 26h25" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <div class="brand-text">
+        <span class="brand-name" id="brandName"></span>
+        <span class="brand-tag" id="brandTag"></span>
+      </div>
+    </div>
+    <div class="seg" id="seg" role="group" aria-label="Houses or lands"></div>
+  </div>
+  <div class="chips" id="chips" role="group" aria-label="Filter listings"></div>
+</header>
+
+<main class="stage">
+  <div id="map" aria-label="Map of listings"></div>
+  <form class="search" id="search" role="search">
+    <input id="q" type="search" placeholder="Search an area or city" aria-label="Search an area or city" autocomplete="off">
+    <button type="submit">Search</button>
+  </form>
+  <div class="suggest" id="suggest" hidden></div>
+  <div class="notice" id="notice" hidden></div>
+  <div class="tools">
+    <button class="tool text" id="layerBtn" type="button" aria-label="Switch between satellite and street map">Map</button>
+    <button class="tool" id="zoomIn" type="button" aria-label="Zoom in">+</button>
+    <button class="tool" id="zoomOut" type="button" aria-label="Zoom out">&minus;</button>
+    <button class="tool" id="locate" type="button" aria-label="Show my location">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>
+    </button>
+  </div>
+  <button class="fab" id="postBtn" type="button" hidden>+ Post property</button>
+  <section class="sheet" id="sheet" hidden aria-live="polite"></section>
+  <div class="toast" id="toast" hidden role="status"></div>
+</main>
+
+<div class="panel" id="panel" hidden role="dialog" aria-modal="true" aria-labelledby="panelTitle">
+  <div class="panel-in">
+    <div class="panel-head"><h2 id="panelTitle"></h2><button class="close" id="panelClose" type="button" aria-label="Close">&times;</button></div>
+    <div id="panelBody" style="display:flex;flex-direction:column;gap:12px"></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script>
+/* =====================================================================
+   SETTINGS: the only part you normally need to change
+   ===================================================================== */
+const CONFIG = {
+  appName: "Lands n Lords",
+  tagline: "Verified houses and lands",
+
+  // Your business WhatsApp number with country code, digits only. Example: "919876543210"
+  whatsappNumber: "",
+  // Number for the "Call us" button. Leave "" to hide the button.
+  callNumber: "",
+
+  // Link of your Google Sheet published as CSV (File > Share > Publish to web > CSV).
+  // While this is "", the app shows the sample listings below.
+  sheetCsvUrl: "",
+
+  // Owner accounts and approvals (Supabase). These two values are public by design.
+  supabaseUrl: "https://gnntittzeamfejbhtvdo.supabase.co",
+  supabaseKey: "sb_publishable_xDA3eHM8MLT1nvQJi1nHww_MHUgEk-D",
+
+  // Listings where the visitor sees the owner's number and contacts them directly.
+  // Everything else goes through your WhatsApp. Written as "category-deal".
+  directContact: ["house-rent", "house-lease"],
+
+  // With a Google Sheet connected, new listings appear on open maps after this many seconds.
+  refreshSeconds: 60,
+
+  // Opening animation: the map flies from India to the visitor's location in this many seconds.
+  introSeconds: 2,
+  // If there are no listings within this distance of the visitor, they see a short "none near you yet" message.
+  serviceRadiusKm: 60,
+
+  // Where the map opens if there are no listings to show.
+  startCenter: [21.5, 80],
+  startZoom: 5
+};
+
+/* Sample listings, shown only while sheetCsvUrl is empty.
+   For SALE and PLOT listings never store the owner's number here or in the
+   public sheet: anything in this file can be read by visitors. */
+const SAMPLE_LISTINGS = [
+  { id: "HR-101", category: "house", deal: "rent", title: "2 BHK flat", area: "PM Palem", lat: 17.7975, lng: 83.3530, price: "₹14,000 / month",
+    details: "2 BHK · 1,050 sq ft · 2nd floor · East facing", description: "Gated apartment with lift and covered parking. Family or bachelors.", ownerName: "Owner name", ownerPhone: "" },
+  { id: "HR-102", category: "house", deal: "rent", title: "3 BHK flat", area: "Madhurawada", lat: 17.8170, lng: 83.3536, price: "₹22,000 / month",
+    details: "3 BHK · 1,480 sq ft · 4th floor · West facing", description: "Close to the IT SEZ. Power backup and 24-hour water.", ownerName: "Owner name", ownerPhone: "" },
+  { id: "HR-103", category: "house", deal: "rent", title: "1 BHK portion", area: "MVP Colony", lat: 17.7407, lng: 83.3367, price: "₹9,500 / month",
+    details: "1 BHK · 600 sq ft · Ground floor", description: "Independent portion in a quiet lane, bike parking.", ownerName: "Owner name", ownerPhone: "" },
+  { id: "HS-201", category: "house", deal: "sale", title: "3 BHK flat", area: "Yendada", lat: 17.7760, lng: 83.3620, price: "₹78 Lakh",
+    details: "3 BHK · 1,620 sq ft · 5th floor · East facing", description: "Ready to move. Documents checked by our advocate." },
+  { id: "HS-202", category: "house", deal: "sale", title: "Independent house", area: "Seethammadhara", lat: 17.7427, lng: 83.3124, price: "₹1.45 Crore",
+    details: "G+1 · 200 sq yd · 4 BHK · North facing", description: "Corner house on a 30 ft road." },
+  { id: "HL-301", category: "house", deal: "lease", title: "2 BHK flat", area: "Gajuwaka", lat: 17.6900, lng: 83.2100, price: "₹6 Lakh lease",
+    details: "2 BHK · 980 sq ft · 3 year lease · 1st floor", description: "Lease amount returned in full at the end of the term." },
+  { id: "HB-601", category: "house", deal: "bnb", title: "Sea-view 1 BHK stay", area: "Rushikonda", lat: 17.7820, lng: 83.3850, price: "₹2,800 / night",
+    details: "Sleeps 3 · 1 bedroom · AC · Wi-Fi · Kitchen", description: "Five minutes from the beach. Self check-in." },
+  { id: "LS-401", category: "land", deal: "sale", title: "Residential plot", area: "Kommadi", lat: 17.8360, lng: 83.3450, price: "₹52 Lakh",
+    details: "200 sq yd · East facing · 40 ft road", description: "Plot in an approved layout. Boundary visible on the satellite view." },
+  { id: "LS-402", category: "land", deal: "sale", title: "Residential plot", area: "Anandapuram", lat: 17.8990, lng: 83.3750, price: "₹24 Lakh",
+    details: "167 sq yd · West facing · 30 ft road", description: "Open plot in a developing layout." },
+  { id: "LS-403", category: "land", deal: "sale", title: "Residential plot", area: "Bhogapuram", lat: 18.0300, lng: 83.4900, price: "₹30 Lakh",
+    details: "240 sq yd · North facing", description: "Near the new airport road." },
+  { id: "LL-501", category: "land", deal: "lease", title: "Open land for lease", area: "Tagarapuvalasa", lat: 17.9300, lng: 83.4200, price: "₹40,000 / month",
+    details: "1,200 sq yd · Highway facing", description: "Suitable for a warehouse, yard or showroom." }
+].map(l => ({ ...l, sample: true }));
+
+/* =====================================================================
+   App code
+   ===================================================================== */
+const DEALS = {
+  rent:  { label: "For rent",  chip: "Rent",  letter: "R" },
+  sale:  { label: "For sale",  chip: "Sale",  letter: "S" },
+  lease: { label: "For lease", chip: "Lease", letter: "L" },
+  bnb:   { label: "BnB stay",  chip: "BnB",   letter: "B" }
+};
+const CATS = {
+  house: { label: "Houses", one: "House", deals: ["rent", "sale", "lease", "bnb"] },
+  land:  { label: "Lands",  one: "Land",  deals: ["sale", "lease"] }
+};
+const isDirect = l => CONFIG.directContact.includes(l.category + "-" + l.deal);
+const $ = id => document.getElementById(id);
+const digits = s => String(s || "").replace(/\D/g, "");
+
+function el(tag, cls, text) {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text != null) n.textContent = text;
+  return n;
+}
+let toastTimer;
+function toast(msg) {
+  const t = $("toast");
+  t.textContent = msg; t.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.hidden = true; }, 3200);
+}
+
+/* ---- Google Sheet (CSV) reading ---- */
+function parseCsv(text) {
+  const rows = []; let row = [], cell = "", q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) {
+      if (c === '"') { if (text[i + 1] === '"') { cell += '"'; i++; } else q = false; }
+      else cell += c;
+    } else if (c === '"') q = true;
+    else if (c === ",") { row.push(cell); cell = ""; }
+    else if (c === "\n") { row.push(cell); rows.push(row); row = []; cell = ""; }
+    else if (c !== "\r") cell += c;
+  }
+  if (cell !== "" || row.length) { row.push(cell); rows.push(row); }
+  return rows;
+}
+function rowsToListings(rows) {
+  if (!rows.length) return [];
+  const head = rows[0].map(h => h.trim().toLowerCase().replace(/[\s_]+/g, ""));
+  const out = [];
+  for (const r of rows.slice(1)) {
+    const o = {};
+    head.forEach((h, i) => { o[h] = (r[i] || "").trim(); });
+    const category = (o.category || "").toLowerCase();
+    const deal = (o.deal || "").toLowerCase();
+    const lat = parseFloat(o.lat), lng = parseFloat(o.lng);
+    const status = (o.status || "active").toLowerCase();
+    if (!CATS[category] || !CATS[category].deals.includes(deal) || !isFinite(lat) || !isFinite(lng) || status !== "active" || !o.id) continue;
+    out.push({
+      id: o.id, category, deal, title: o.title || CATS[category].one, area: o.area || "", lat, lng,
+      price: o.price || "", details: o.details || "", description: o.description || "",
+      video: o.video || "",
+      photos: (o.photos || "").split(/[\s|]+/).filter(u => /^https:\/\//.test(u)),
+      // Owner details are kept only for direct-contact listings, even if someone types them elsewhere.
+      ownerName: isDirect({ category, deal }) ? (o.ownername || "") : "",
+      ownerPhone: isDirect({ category, deal }) ? (o.ownerphone || "") : ""
+    });
+  }
+  return out;
+}
+function youtubeId(v) {
+  if (!v) return "";
+  const m = String(v).match(/(?:youtu\.be\/|[?&]v=|\/shorts\/|\/embed\/|\/live\/)([A-Za-z0-9_-]{11})/);
+  if (m) return m[1];
+  return /^[A-Za-z0-9_-]{11}$/.test(v.trim()) ? v.trim() : "";
+}
+function waLink(number, message) {
+  let n = digits(number);
+  if (n.length === 10) n = "91" + n;
+  return "https://wa.me/" + n + "?text=" + encodeURIComponent(message);
+}
+
+/* ---- State ---- */
+let listings = [];
+let category = "house";
+let dealFilter = "all";
+let selectedId = null;
+let map = null, layer = null;
+const markers = new Map();
+
+/* ---- Brand ---- */
+$("brandName").textContent = CONFIG.appName;
+$("brandTag").textContent = CONFIG.tagline;
+document.title = CONFIG.appName;
+
+/* ---- Chips ---- */
+const inCat = () => listings.filter(l => l.category === category);
+const visible = () => inCat().filter(l => dealFilter === "all" || l.deal === dealFilter);
+function renderChips() {
+  const seg = $("seg");
+  seg.textContent = "";
+  Object.keys(CATS).forEach(key => {
+    const b = el("button", "", CATS[key].label);
+    b.type = "button";
+    b.setAttribute("aria-pressed", String(category === key));
+    b.addEventListener("click", () => {
+      if (category === key) return;
+      category = key; dealFilter = "all";
+      closeSheet(); renderChips(); renderPins(); afterFilter();
+    });
+    seg.append(b);
+  });
+  const box = $("chips");
+  box.textContent = "";
+  const pool = inCat();
+  [["all", "All"]].concat(CATS[category].deals.map(d => [d, DEALS[d].chip])).forEach(([key, label]) => {
+    const n = key === "all" ? pool.length : pool.filter(l => l.deal === key).length;
+    const b = el("button", "chip");
+    b.type = "button";
+    b.setAttribute("aria-pressed", String(dealFilter === key));
+    if (key !== "all") b.append(el("span", "dot " + key));
+    b.append(el("span", "", label), el("span", "n", String(n)));
+    b.addEventListener("click", () => { dealFilter = key; closeSheet(); renderChips(); renderPins(); afterFilter(); });
+    box.append(b);
+  });
+}
+
+/* ---- Map ---- */
+function initMap() {
+  if (typeof L === "undefined") {
+    $("notice").textContent = "The map could not load. Check your internet connection and reload.";
+    $("notice").hidden = false;
+    return;
+  }
+  map = L.map("map", { zoomControl: false, attributionControl: true }).setView([21.5, 80], 5); // opens on India, then flies in
+  map.attributionControl.setPrefix(false);
+  let tilesLoaded = 0;
+  const sat = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
+    maxZoom: 20, maxNativeZoom: 18,
+    attribution: "Imagery &copy; Esri, Maxar, Earthstar Geographics | Search &copy; OpenStreetMap"
+  });
+  sat.on("tileload", () => { tilesLoaded++; $("notice").hidden = true; });
+  sat.on("tileerror", () => {
+    if (!tilesLoaded) {
+      $("notice").textContent = "Satellite imagery could not load here. Pins still work; the imagery appears once the app is hosted on its own link.";
+      $("notice").hidden = false;
+    }
+  });
+  sat.addTo(map);
+  // Place names and roads drawn over the imagery
+  const labels = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}", {
+    maxZoom: 20, maxNativeZoom: 18
+  }).addTo(map);
+  // Street map, for people who prefer roads and names over imagery
+  const street = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}", {
+    maxZoom: 20, maxNativeZoom: 18, attribution: "Map &copy; Esri | Search &copy; OpenStreetMap"
+  });
+  let satOn = true;
+  $("layerBtn").addEventListener("click", () => {
+    satOn = !satOn;
+    if (satOn) { map.removeLayer(street); sat.addTo(map); labels.addTo(map); }
+    else { map.removeLayer(sat); map.removeLayer(labels); street.addTo(map); }
+    $("layerBtn").textContent = satOn ? "Map" : "Sat";
+  });
+  layer = L.layerGroup().addTo(map);
+  map.on("click", e => { hideSuggest(); if (pickMode) { pickMode(e.latlng); return; } closeSheet(); });
+
+  $("zoomIn").addEventListener("click", () => map.zoomIn());
+  $("zoomOut").addEventListener("click", () => map.zoomOut());
+  $("locate").addEventListener("click", () => {
+    if (!navigator.geolocation) { toast("Location is not available on this device."); return; }
+    navigator.geolocation.getCurrentPosition(pos => {
+      const p = [pos.coords.latitude, pos.coords.longitude];
+      showMe(p); track(); map.setView(p, 15);
+    }, () => toast("Could not get your location. Allow location access and try again."), { enableHighAccuracy: true, timeout: 10000 });
+  });
+}
+let meDot = null;
+function showMe(p) {
+  if (meDot) meDot.setLatLng(p);
+  else meDot = L.circleMarker(p, { radius: 8, color: "#fff", weight: 3, fillColor: "#00b7f0", fillOpacity: 1, interactive: false }).addTo(map);
+}
+/* Keeps the visitor's dot moving as they move, like a navigation app. */
+let watching = false;
+function track() {
+  if (watching || !navigator.geolocation) return;
+  watching = true;
+  navigator.geolocation.watchPosition(pos => showMe([pos.coords.latitude, pos.coords.longitude]), () => {}, { enableHighAccuracy: true, maximumAge: 10000 });
+}
+function km(a, b) {
+  const r = Math.PI / 180, dLat = (b[0] - a[0]) * r, dLng = (b[1] - a[1]) * r;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(a[0] * r) * Math.cos(b[0] * r) * Math.sin(dLng / 2) ** 2;
+  return 12742 * Math.asin(Math.sqrt(h));
+}
+function flyTo(center, zoom) {
+  const calm = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (calm) map.setView(center, zoom);
+  else map.flyTo(center, zoom, { duration: CONFIG.introSeconds });
+}
+/* Opening: detect where the visitor is standing and fly there. */
+function intro() {
+  if (!map) return;
+  const toListings = () => {
+    const shown = visible();
+    if (!shown.length) { flyTo(CONFIG.startCenter, CONFIG.startZoom); return; }
+    const b = L.latLngBounds(shown.map(l => [l.lat, l.lng])).pad(0.25);
+    flyTo(b.getCenter(), Math.min(map.getBoundsZoom(b), 14));
+  };
+  if (!navigator.geolocation) { toListings(); return; }
+  let settled = false;
+  const timer = setTimeout(() => { if (!settled) { settled = true; toListings(); } }, 5000);
+  navigator.geolocation.getCurrentPosition(pos => {
+    const late = settled;
+    settled = true; clearTimeout(timer);
+    const p = [pos.coords.latitude, pos.coords.longitude];
+    showMe(p); track();
+    flyTo(p, 14);
+    if (!listings.some(l => km(p, [l.lat, l.lng]) <= CONFIG.serviceRadiusKm)) toast("No listings near you yet. Search another area, or post the first one here.");
+  }, () => { if (!settled) { settled = true; clearTimeout(timer); toListings(); } },
+  { enableHighAccuracy: false, timeout: 20000, maximumAge: 300000 });
+}
+/* Search: first our own listing areas, then any place in India. */
+async function runSearch(q) {
+  if (!q || !map) return;
+  const ql = q.toLowerCase();
+  const local = visible().filter(l => l.area.toLowerCase().includes(ql));
+  if (local.length) {
+    map.flyToBounds(L.latLngBounds(local.map(l => [l.lat, l.lng])), { padding: [60, 60], maxZoom: 15, duration: 1.2 });
+    return;
+  }
+  try {
+    const res = await fetch("https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=in&q=" + encodeURIComponent(q));
+    const hits = await res.json();
+    if (!hits.length) { toast('No place found for "' + q + '".'); return; }
+    map.flyTo([parseFloat(hits[0].lat), parseFloat(hits[0].lon)], 14, { duration: 1.5 });
+  } catch (e) {
+    toast("Search is not available right now. Move the map by hand instead.");
+  }
+}
+/* Suggestions while typing: our own listing areas first, then places in India. */
+let suggestTimer = null, suggestSeq = 0;
+function hideSuggest() { $("suggest").hidden = true; $("suggest").textContent = ""; }
+function placeLabel(pr) {
+  const parts = [];
+  [pr.city, pr.county, pr.state].forEach(x => { if (x && x !== pr.name && !parts.includes(x)) parts.push(x); });
+  return parts.join(", ");
+}
+function showSuggest(items) {
+  const box = $("suggest");
+  box.textContent = "";
+  items.slice(0, 6).forEach(it => {
+    const b = el("button", "", it.title);
+    b.type = "button";
+    if (it.sub) b.append(el("small", "", it.sub));
+    b.addEventListener("click", () => { $("q").value = it.title; hideSuggest(); $("q").blur(); it.go(); });
+    box.append(b);
+  });
+  box.hidden = !items.length;
+}
+function localMatches(ql) {
+  const seen = new Map();
+  visible().forEach(l => { if (l.area.toLowerCase().includes(ql)) { if (!seen.has(l.area)) seen.set(l.area, []); seen.get(l.area).push(l); } });
+  return Array.from(seen, ([area, ls]) => ({
+    title: area, sub: ls.length + (ls.length === 1 ? " listing" : " listings"),
+    go: () => map.flyToBounds(L.latLngBounds(ls.map(l => [l.lat, l.lng])), { padding: [60, 60], maxZoom: 15, duration: 1.2 })
+  }));
+}
+function onType() {
+  clearTimeout(suggestTimer);
+  const q = $("q").value.trim();
+  if (q.length < 3 || !map) { hideSuggest(); return; }
+  const mine = localMatches(q.toLowerCase());
+  showSuggest(mine);
+  suggestTimer = setTimeout(async () => {
+    const seq = ++suggestSeq;
+    try {
+      const res = await fetch("https://photon.komoot.io/api/?limit=6&lang=en&bbox=68,6,97.5,37.5&q=" + encodeURIComponent(q));
+      const data = await res.json();
+      if (seq !== suggestSeq || $("q").value.trim() !== q) return;
+      const places = (data.features || []).filter(f => f.properties && f.properties.name && (f.properties.countrycode || "IN") === "IN").map(f => ({
+        title: f.properties.name, sub: placeLabel(f.properties),
+        go: () => map.flyTo([f.geometry.coordinates[1], f.geometry.coordinates[0]], 14, { duration: 1.5 })
+      }));
+      showSuggest(mine.concat(places));
+    } catch (e) { /* suggestions are optional; the Search button still works */ }
+  }, 350);
+}
+/* After a filter change: if nothing of that kind is on screen, move to the nearest ones. */
+function afterFilter() {
+  const shown = visible();
+  if (!shown.length) { toast("No listings in this category yet."); return; }
+  if (!map) return;
+  const view = map.getBounds();
+  if (!shown.some(l => view.contains([l.lat, l.lng]))) {
+    map.flyToBounds(L.latLngBounds(shown.map(l => [l.lat, l.lng])), { padding: [50, 50], maxZoom: 14, duration: 1 });
+    toast("None in this area. Showing the nearest ones.");
+  }
+}
+function pinIcon(l, on) {
+  return L.divIcon({
+    className: "pin-wrap",
+    html: '<div class="pin ' + l.deal + (on ? " on" : "") + '"><b>' + DEALS[l.deal].letter + "</b></div>",
+    iconSize: [30, 30], iconAnchor: [15, 36]
+  });
+}
+function renderPins() {
+  if (!map) return;
+  layer.clearLayers(); markers.clear();
+  visible().forEach(l => {
+    const m = L.marker([l.lat, l.lng], { icon: pinIcon(l, l.id === selectedId), title: l.title + ", " + l.area, keyboard: true });
+    m.on("click", ev => { L.DomEvent.stopPropagation(ev); openListing(l.id); });
+    m.addTo(layer); markers.set(l.id, m);
+  });
+}
+
+/* ---- Listing sheet ---- */
+function openListing(id) {
+  const l = listings.find(x => x.id === id);
+  if (!l) return;
+  if (category !== l.category || (dealFilter !== "all" && dealFilter !== l.deal)) {
+    category = l.category; dealFilter = "all"; renderChips();
+  }
+  selectedId = id;
+  renderPins();
+  if (map) map.panTo([l.lat, l.lng]);
+  try { history.replaceState(null, "", "#" + encodeURIComponent(id)); } catch (e) {}
+
+  const s = $("sheet");
+  s.textContent = "";
+  s.scrollTop = 0;
+
+  const head = el("div", "sheet-head");
+  const hl = el("div");
+  const badges = el("div", "badges");
+  badges.append(el("span", "badge " + l.deal, CATS[l.category].one + " · " + DEALS[l.deal].label), el("span", "badge", l.id));
+  if (l.sample) badges.append(el("span", "badge sample", "Sample listing"));
+  hl.append(badges, el("h2", "", l.title), el("p", "where", l.area));
+  const x = el("button", "close", "×");
+  x.type = "button"; x.setAttribute("aria-label", "Close");
+  x.addEventListener("click", closeSheet);
+  head.append(hl, x);
+  s.append(head);
+
+  const money = el("div");
+  money.append(el("div", "price", l.price || "Price on request"));
+  if (l.details) money.append(el("p", "facts", l.details));
+  s.append(money);
+
+  const vid = youtubeId(l.video);
+  if (vid) {
+    const box = el("div", "video");
+    const f = el("iframe");
+    f.src = "https://www.youtube-nocookie.com/embed/" + vid;
+    f.title = "Video of " + l.title;
+    f.loading = "lazy";
+    f.allow = "accelerometer; encrypted-media; picture-in-picture; fullscreen";
+    f.allowFullscreen = true;
+    box.append(f);
+    const a = el("a", "video-link", "Open the video on YouTube");
+    a.href = "https://www.youtube.com/watch?v=" + vid; a.target = "_blank"; a.rel = "noopener";
+    s.append(box, a);
+  } else {
+    s.append(el("div", "video video-none", "Video walkthrough will appear here"));
+  }
+
+  if (l.photos && l.photos.length) {
+    const ph = el("div", "photos");
+    l.photos.forEach((u, i) => { const im = el("img"); im.src = u; im.alt = l.title + " photo " + (i + 1); im.loading = "lazy"; ph.append(im); });
+    s.append(ph);
+  }
+  if (l.description) s.append(el("p", "desc", l.description));
+
+  const c = el("div", "contact");
+  const btns = el("div", "btns");
+  if (isDirect(l)) {
+    c.append(el("p", "who", "Contact the owner directly" + (l.ownerName ? ": " + l.ownerName : "")));
+    if (digits(l.ownerPhone)) {
+      c.append(el("p", "num", l.ownerPhone));
+      const call = el("a", "btn", "Call owner"); call.href = "tel:" + l.ownerPhone.replace(/[^\d+]/g, "");
+      const wa = el("a", "btn wa", "WhatsApp owner");
+      wa.href = waLink(l.ownerPhone, "Hi, I saw your " + l.title + " in " + l.area + " (" + l.id + ") on " + CONFIG.appName + ". Is it still available?");
+      wa.target = "_blank"; wa.rel = "noopener";
+      btns.append(wa, call);
+      const dir = el("a", "btn", "Directions");
+      dir.href = "https://www.google.com/maps/dir/?api=1&destination=" + l.lat + "," + l.lng;
+      dir.target = "_blank"; dir.rel = "noopener";
+      btns.append(dir);
+    } else {
+      c.append(el("p", "hint", "The owner's phone number will show here. No fee for tenants or owners."));
+    }
+  } else {
+    const stay = l.deal === "bnb";
+    c.append(el("p", "who", (stay ? "Request this stay through " : "Interested? Talk to ") + CONFIG.appName));
+    c.append(el("p", "hint", stay
+      ? "Pick your dates and send the request. We check availability with the host and reply on WhatsApp."
+      : "We arrange the site visit, document check and registration. Location shown is approximate."));
+    const base = "Hi, I'm interested in " + l.id + ": " + l.title + ", " + l.area + (l.price ? " (" + l.price + ")" : "") + ".";
+    let fIn, fOut, fGuests;
+    if (stay) {
+      const form = el("div", "stay");
+      const field = (id, label, type) => {
+        const lab = el("label", "", label), inp = el("input");
+        inp.type = type; inp.id = id; lab.append(inp); form.append(lab); return inp;
+      };
+      fIn = field("stayIn", "Check-in", "date");
+      fOut = field("stayOut", "Check-out", "date");
+      fGuests = field("stayGuests", "Guests", "number");
+      const today = new Date(); today.setMinutes(today.getMinutes() - today.getTimezoneOffset());
+      fIn.min = fOut.min = today.toISOString().slice(0, 10);
+      fGuests.min = "1"; fGuests.value = "2";
+      c.append(form);
+    }
+    const message = () => {
+      if (!stay) return base;
+      if (!fIn.value || !fOut.value) { toast("Choose your check-in and check-out dates."); return null; }
+      const nights = Math.round((new Date(fOut.value) - new Date(fIn.value)) / 86400000);
+      if (!(nights > 0)) { toast("Check-out must be after check-in."); return null; }
+      return base + " Booking request: " + fIn.value + " to " + fOut.value + " (" + nights + (nights === 1 ? " night" : " nights") + "), " + (parseInt(fGuests.value, 10) || 1) + " guests.";
+    };
+    const waText = stay ? "Send booking request" : "Contact us on WhatsApp";
+    if (digits(CONFIG.whatsappNumber)) {
+      const wa = el("a", "btn wa", waText);
+      wa.href = waLink(CONFIG.whatsappNumber, base); wa.target = "_blank"; wa.rel = "noopener";
+      wa.addEventListener("click", ev => {
+        const m = message();
+        if (!m) { ev.preventDefault(); return; }
+        wa.href = waLink(CONFIG.whatsappNumber, m);
+      });
+      btns.append(wa);
+    } else {
+      const wa = el("button", "btn wa", waText); wa.type = "button";
+      wa.addEventListener("click", () => { if (message()) toast("Add your WhatsApp number in the settings to switch this on."); });
+      btns.append(wa);
+    }
+    if (digits(CONFIG.callNumber)) {
+      const call = el("a", "btn", "Call us"); call.href = "tel:" + CONFIG.callNumber.replace(/[^\d+]/g, "");
+      btns.append(call);
+    }
+  }
+  const share = el("button", "btn quiet", "Share"); share.type = "button";
+  share.addEventListener("click", () => shareListing(l));
+  btns.append(share);
+  c.append(btns);
+  s.append(c);
+  s.hidden = false;
+}
+function closeSheet() {
+  if (selectedId === null) return;
+  selectedId = null;
+  $("sheet").hidden = true;
+  renderPins();
+  try { history.replaceState(null, "", location.pathname + location.search); } catch (e) {}
+}
+function shareListing(l) {
+  const url = location.origin + location.pathname + "#" + encodeURIComponent(l.id);
+  const text = l.title + " in " + l.area + (l.price ? ", " + l.price : "") + " | " + CONFIG.appName;
+  if (navigator.share) { navigator.share({ title: CONFIG.appName, text, url }).catch(() => {}); return; }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text + " " + url).then(() => toast("Link copied."), () => toast(url));
+  } else toast(url);
+}
+function openFromHash() {
+  let id = "";
+  try { id = decodeURIComponent(location.hash.slice(1)); } catch (e) {}
+  if (id && listings.some(l => l.id === id)) { openListing(id); return true; }
+  return false;
+}
+
+/* ---- Owner accounts, posting and approval (Supabase) ---- */
+let sb = null, session = null, isAdmin = false, pickMode = null, draftMarker = null;
+const newDraft = () => ({ category: "house", deal: "rent", title: "", area: "", price: "", details: "", description: "", video: "", ownerName: "", ownerPhone: "", lat: null, lng: null, files: [] });
+let draft = newDraft();
+const PLACEHOLDER_PRICE = { rent: "₹14,000 / month", sale: "₹78 Lakh", lease: "₹6 Lakh lease", bnb: "₹2,800 / night" };
+const STATUS_TEXT = { pending: "Waiting for approval", active: "Live on the map", rejected: "Not approved" };
+
+function initSupabase() {
+  if (!CONFIG.supabaseUrl || !CONFIG.supabaseKey || typeof window.supabase === "undefined") return;
+  sb = window.supabase.createClient(CONFIG.supabaseUrl, CONFIG.supabaseKey);
+  $("postBtn").hidden = false;
+  sb.auth.getSession().then(({ data }) => { session = data.session; return refreshAdmin(); }).then(updateFab).catch(() => {});
+  sb.auth.onAuthStateChange((_e, s) => { session = s; setTimeout(() => { refreshAdmin().then(updateFab).catch(() => {}); }, 0); });
+}
+async function refreshAdmin() {
+  isAdmin = false;
+  if (!sb || !session) return;
+  const { data } = await sb.from("admins").select("user_id").eq("user_id", session.user.id).maybeSingle();
+  isAdmin = !!data;
+}
+function updateFab() { $("postBtn").textContent = session ? "My account" : "+ Post property"; }
+
+async function loadFromSupabase() {
+  const [a, b] = await Promise.all([
+    sb.from("listings").select("*").eq("status", "active"),
+    sb.from("listing_contacts").select("*")
+  ]);
+  if (a.error) throw a.error;
+  const contacts = new Map(((b.data) || []).map(c => [c.listing_id, c]));
+  return a.data.map(r => {
+    const c = contacts.get(r.id) || {};
+    const direct = isDirect(r);
+    return {
+      id: r.public_id, uid: r.id, category: r.category, deal: r.deal, title: r.title, area: r.area,
+      lat: r.lat, lng: r.lng, price: r.price || "", details: r.details || "", description: r.description || "",
+      video: r.video || "", photos: (r.photos || []).filter(u => /^https:\/\//.test(u)),
+      ownerName: direct ? (c.owner_name || "") : "", ownerPhone: direct ? (c.owner_phone || "") : ""
+    };
+  });
+}
+async function reloadListings() {
+  listings = await loadListings(true);
+  renderChips(); renderPins();
+}
+
+/* ---- panel helpers ---- */
+function openPanel(title) {
+  $("panelTitle").textContent = title;
+  const b = $("panelBody"); b.textContent = "";
+  $("panel").hidden = false;
+  $("panel").querySelector(".panel-in").scrollTop = 0;
+  return b;
+}
+function closePanel() { $("panel").hidden = true; }
+function inp(tag, props) { const n = document.createElement(tag); Object.assign(n, props || {}); return n; }
+function fieldOf(label, control) { const w = el("label", "field"); w.append(el("span", "", label), control); return w; }
+function btnEl(text, cls, fn) { const b = el("button", cls, text); b.type = "button"; b.addEventListener("click", fn); return b; }
+function say(node, kind, text) { node.className = "msg " + kind; node.textContent = text; }
+
+/* ---- sign in ---- */
+function viewAuth(mode) {
+  const up = mode === "up";
+  const body = openPanel(up ? "Create account" : "Sign in");
+  body.append(el("p", "msg soft", up ? "Create an owner account to post your property. Posting is free." : "Sign in to post and manage your listings."));
+  const email = inp("input", { type: "email", id: "authEmail", autocomplete: "email" });
+  const pass = inp("input", { type: "password", id: "authPass", autocomplete: up ? "new-password" : "current-password" });
+  const msg = el("p", "msg");
+  const go = btnEl(up ? "Create account" : "Sign in", "btn wa", async () => {
+    say(msg, "", "");
+    if (!email.value.trim() || pass.value.length < 6) { say(msg, "err", "Enter your email and a password of at least 6 characters."); return; }
+    go.disabled = true;
+    const creds = { email: email.value.trim(), password: pass.value };
+    let res;
+    try { res = up ? await sb.auth.signUp(creds) : await sb.auth.signInWithPassword(creds); }
+    catch (e) { res = { error: { message: "Could not reach the server. Check your internet connection." } }; }
+    go.disabled = false;
+    if (res.error) {
+      const m = res.error.message || "";
+      let text = m;
+      if (/rate limit/i.test(m)) text = "Too many sign-up emails were sent. Please try again in an hour, or ask " + CONFIG.appName + " to switch off email confirmation.";
+      else if (/already registered|already exists/i.test(m)) text = "This email already has an account. Tap \"I already have an account\" and sign in.";
+      else if (/invalid login/i.test(m)) text = "Wrong email or password.";
+      else if (/failed to fetch|network|load failed/i.test(m)) text = "Could not reach the server. Check your internet connection and try again.";
+      say(msg, "err", text); return;
+    }
+    if (!res.data.session) { say(msg, "ok", "Check your email to confirm your account, then sign in."); return; }
+    session = res.data.session; await refreshAdmin(); updateFab(); viewHome();
+  });
+  body.append(fieldOf("Email", email), fieldOf("Password", pass), msg, go,
+    btnEl(up ? "I already have an account" : "Create a new account", "btn quiet", () => viewAuth(up ? "in" : "up")));
+}
+
+/* ---- account home ---- */
+function viewHome() {
+  const body = openPanel("My account");
+  body.append(el("p", "msg soft", "Signed in as " + session.user.email));
+  body.append(btnEl("Post a property", "btn wa", () => viewPost()));
+  body.append(btnEl("My listings", "btn", viewMine));
+  if (isAdmin) {
+    const b = btnEl("Review listings", "btn", () => viewAdmin("pending"));
+    body.append(b);
+    sb.from("listings").select("id", { count: "exact", head: true }).eq("status", "pending")
+      .then(({ count }) => { if (count) b.textContent = "Review listings (" + count + " waiting)"; });
+  }
+  body.append(btnEl("Sign out", "btn quiet", async () => {
+    await sb.auth.signOut(); session = null; isAdmin = false; updateFab(); closePanel(); toast("Signed out.");
+  }));
+}
+
+/* ---- post a property ---- */
+function showDraftMarker() {
+  if (!map || draft.lat == null) return;
+  const p = [draft.lat, draft.lng];
+  if (draftMarker) draftMarker.setLatLng(p);
+  else draftMarker = L.circleMarker(p, { radius: 9, color: "#fff", weight: 3, fillColor: "#ff7a00", fillOpacity: 1, interactive: false }).addTo(map);
+}
+function clearDraftMarker() { if (draftMarker) { draftMarker.remove(); draftMarker = null; } }
+
+function viewPost() {
+  const body = openPanel("Post a property");
+  body.append(el("p", "msg soft", "Posting is free. Your listing appears on the map after " + CONFIG.appName + " approves it."));
+  const bind = (key, tag, props) => {
+    const n = inp(tag, Object.assign({ id: "f_" + key, value: draft[key] || "" }, props));
+    n.addEventListener("input", () => { draft[key] = n.value; });
+    return n;
+  };
+  const cat = inp("select", { id: "f_category" });
+  Object.keys(CATS).forEach(k => cat.append(Object.assign(el("option", "", CATS[k].one), { value: k })));
+  cat.value = draft.category;
+  const deal = inp("select", { id: "f_deal" });
+  const price = bind("price", "input", { maxLength: 40 });
+  const note = el("p", "msg soft");
+  const fillDeals = () => {
+    const deals = CATS[draft.category].deals;
+    if (!deals.includes(draft.deal)) draft.deal = deals[0];
+    deal.textContent = "";
+    deals.forEach(d => deal.append(Object.assign(el("option", "", d === "bnb" ? "BnB stay (per night)" : DEALS[d].label), { value: d })));
+    deal.value = draft.deal;
+    price.placeholder = "e.g. " + PLACEHOLDER_PRICE[draft.deal];
+    note.textContent = isDirect(draft)
+      ? "Your name and phone number will be shown to people who tap your listing, so they can call you."
+      : "Your phone number stays private. Buyers and guests contact " + CONFIG.appName + ", and we connect them with you.";
+  };
+  cat.addEventListener("change", () => { draft.category = cat.value; fillDeals(); });
+  deal.addEventListener("change", () => { draft.deal = deal.value; fillDeals(); });
+  fillDeals();
+
+  const photos = inp("input", { type: "file", id: "f_photos", accept: "image/*", multiple: true });
+  const photoNote = el("p", "msg soft", draft.files.length ? draft.files.length + " photo(s) selected." : "Up to 4 photos, 6 MB each.");
+  photos.addEventListener("change", () => { draft.files = Array.from(photos.files).slice(0, 4); photoNote.textContent = draft.files.length + " photo(s) selected."; });
+
+  const locText = el("p", "msg soft");
+  const showLoc = () => { locText.textContent = draft.lat == null ? "Location not set yet. Use the buttons below." : "Location set (" + draft.lat.toFixed(5) + ", " + draft.lng.toFixed(5) + ")."; };
+  showLoc();
+  const here = btnEl("Use my current location", "btn small", () => {
+    if (!navigator.geolocation) { toast("Location is not available on this device."); return; }
+    navigator.geolocation.getCurrentPosition(pos => {
+      draft.lat = pos.coords.latitude; draft.lng = pos.coords.longitude; showLoc(); showDraftMarker();
+      if (map) map.setView([draft.lat, draft.lng], 17);
+    }, () => toast("Could not get your location. Allow location access, or pick the spot on the map."), { enableHighAccuracy: true, timeout: 15000 });
+  });
+  const pick = btnEl("Pick on map", "btn small", () => {
+    closePanel();
+    $("notice").textContent = "Zoom in and tap the exact spot of your property. Tap \"My account\" to cancel.";
+    $("notice").hidden = false;
+    pickMode = ll => {
+      pickMode = null; $("notice").hidden = true;
+      draft.lat = ll.lat; draft.lng = ll.lng; showDraftMarker(); viewPost();
+    };
+  });
+
+  const msg = el("p", "msg");
+  const send = btnEl("Send for approval", "btn wa", async () => {
+    say(msg, "", "");
+    const fail = t => say(msg, "err", t);
+    if (!draft.title.trim()) return fail("Enter a title.");
+    if (!draft.area.trim()) return fail("Enter the area and city, for example Madhurawada, Visakhapatnam.");
+    if (!draft.price.trim()) return fail("Enter the price.");
+    if (draft.lat == null) return fail("Set the location of the property on the map.");
+    if (digits(draft.ownerPhone).length < 10) return fail("Enter your 10-digit phone number.");
+    if (draft.video.trim() && !youtubeId(draft.video)) return fail("The video link must be a YouTube link.");
+    for (const f of draft.files) {
+      if (!/^image\//.test(f.type)) return fail("Only photos can be uploaded.");
+      if (f.size > 6 * 1024 * 1024) return fail("Each photo must be under 6 MB.");
+    }
+    send.disabled = true; say(msg, "soft", "Sending...");
+    try {
+      const urls = [];
+      for (const f of draft.files) {
+        const ext = ((f.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 5)) || "jpg";
+        const path = session.user.id + "/" + Date.now() + "-" + Math.random().toString(36).slice(2, 8) + "." + ext;
+        const up = await sb.storage.from("photos").upload(path, f, { contentType: f.type, cacheControl: "31536000" });
+        if (up.error) throw up.error;
+        urls.push(sb.storage.from("photos").getPublicUrl(path).data.publicUrl);
+      }
+      const ins = await sb.from("listings").insert({
+        owner_id: session.user.id, category: draft.category, deal: draft.deal,
+        title: draft.title.trim(), area: draft.area.trim(), lat: draft.lat, lng: draft.lng,
+        price: draft.price.trim(), details: draft.details.trim(), description: draft.description.trim(),
+        video: draft.video.trim(), photos: urls, status: "pending"
+      }).select("id").single();
+      if (ins.error) throw ins.error;
+      const con = await sb.from("listing_contacts").insert({ listing_id: ins.data.id, owner_name: draft.ownerName.trim(), owner_phone: draft.ownerPhone.trim() });
+      if (con.error) throw con.error;
+      draft = newDraft(); clearDraftMarker(); viewDone();
+    } catch (e) {
+      send.disabled = false; say(msg, "err", "Could not send: " + (e && e.message ? e.message : "please try again."));
+    }
+  });
+
+  const two = (a, b) => { const r = el("div", "two"); r.append(a, b); return r; };
+  body.append(
+    two(fieldOf("Property type", cat), fieldOf("For", deal)),
+    fieldOf("Title", bind("title", "input", { maxLength: 80, placeholder: "e.g. 2 BHK flat, east facing" })),
+    two(fieldOf("Area and city", bind("area", "input", { maxLength: 60, placeholder: "Area, city (e.g. Madhurawada, Visakhapatnam)" })), fieldOf("Price", price)),
+    fieldOf("Size and details", bind("details", "input", { maxLength: 140, placeholder: "e.g. 2 BHK · 1,050 sq ft · 2nd floor" })),
+    fieldOf("Description", bind("description", "textarea", { maxLength: 600, placeholder: "Anything a visitor should know" })),
+    fieldOf("YouTube video link (optional)", bind("video", "input", { type: "url", placeholder: "https://youtu.be/..." })),
+    fieldOf("Photos (optional)", photos), photoNote,
+    two(fieldOf("Your name", bind("ownerName", "input", { maxLength: 60, autocomplete: "name" })), fieldOf("Your phone", bind("ownerPhone", "input", { type: "tel", maxLength: 15, autocomplete: "tel" }))),
+    note, locText
+  );
+  const r = el("div", "row"); r.append(here, pick); body.append(r, msg, send, btnEl("Back", "btn quiet", viewHome));
+}
+function viewDone() {
+  const body = openPanel("Sent for approval");
+  body.append(el("p", "msg ok", "Thank you. " + CONFIG.appName + " will check your listing and it will appear on the map once approved."));
+  body.append(btnEl("Post another property", "btn wa", () => viewPost()), btnEl("My listings", "btn", viewMine));
+}
+
+/* ---- my listings ---- */
+async function viewMine() {
+  const body = openPanel("My listings");
+  const msg = el("p", "msg soft", "Loading...");
+  body.append(msg);
+  const { data, error } = await sb.from("listings").select("id,public_id,title,area,category,deal,status,created_at")
+    .eq("owner_id", session.user.id).order("created_at", { ascending: false });
+  if (error) { say(msg, "err", "Could not load your listings."); body.append(btnEl("Back", "btn quiet", viewHome)); return; }
+  msg.textContent = data.length ? "" : "You have not posted anything yet.";
+  data.forEach(r => {
+    const card = el("div", "item");
+    const top = el("div", "row"); top.append(el("span", "pill " + r.status, STATUS_TEXT[r.status] || r.status), el("span", "pill", r.public_id));
+    card.append(top, el("h3", "", r.title), el("p", "", CATS[r.category].one + " · " + DEALS[r.deal].label + " · " + r.area));
+    let armed = false;
+    const del = btnEl("Delete", "btn small danger", async () => {
+      if (!armed) { armed = true; del.textContent = "Tap again to delete"; return; }
+      del.disabled = true;
+      const res = await sb.from("listings").delete().eq("id", r.id);
+      if (res.error) { del.disabled = false; toast("Could not delete. Try again."); return; }
+      toast("Listing deleted."); reloadListings(); viewMine();
+    });
+    card.append(del); body.append(card);
+  });
+  body.append(btnEl("Back", "btn quiet", viewHome));
+}
+
+/* ---- approval (admin only) ---- */
+async function viewAdmin(tab) {
+  const body = openPanel("Review listings");
+  const tabs = el("div", "tabs");
+  [["pending", "Waiting"], ["active", "Live"]].forEach(([k, label]) => {
+    const b = btnEl(label, "chip", () => viewAdmin(k));
+    b.style.color = "var(--ink)"; b.style.borderColor = "var(--line)";
+    b.setAttribute("aria-pressed", String(tab === k));
+    if (tab === k) { b.style.background = "var(--harbour)"; b.style.color = "var(--on-dark)"; }
+    tabs.append(b);
+  });
+  body.append(tabs);
+  const msg = el("p", "msg soft", "Loading...");
+  body.append(msg);
+  const { data, error } = await sb.from("listings").select("*, listing_contacts(owner_name, owner_phone)")
+    .eq("status", tab).order("created_at", { ascending: tab !== "pending" ? false : true });
+  if (error) { say(msg, "err", "Could not load. Are you signed in as the admin?"); return; }
+  msg.textContent = data.length ? "" : (tab === "pending" ? "Nothing is waiting for approval." : "No live listings yet.");
+  data.forEach(r => {
+    const c = Array.isArray(r.listing_contacts) ? r.listing_contacts[0] : r.listing_contacts;
+    const card = el("div", "item");
+    const top = el("div", "row"); top.append(el("span", "badge " + r.deal, CATS[r.category].one + " · " + DEALS[r.deal].label), el("span", "pill", r.public_id));
+    card.append(top, el("h3", "", r.title), el("p", "", r.area + " · " + (r.price || "no price")));
+    if (r.details) card.append(el("p", "", r.details));
+    if (r.description) card.append(el("p", "", r.description));
+    const own = el("p", "", "Owner: " + ((c && c.owner_name) || "no name") + " · " + ((c && c.owner_phone) || "no phone"));
+    own.style.fontWeight = "600"; card.append(own);
+    const links = el("div", "row");
+    const map1 = el("a", "video-link", "See location on Google Maps"); map1.href = "https://www.google.com/maps?q=" + r.lat + "," + r.lng; map1.target = "_blank"; map1.rel = "noopener";
+    links.append(map1);
+    const vid = youtubeId(r.video);
+    if (vid) { const v = el("a", "video-link", "Watch video"); v.href = "https://www.youtube.com/watch?v=" + vid; v.target = "_blank"; v.rel = "noopener"; links.append(v); }
+    card.append(links);
+    const ph = (r.photos || []).filter(u => /^https:\/\//.test(u));
+    if (ph.length) { const th = el("div", "thumbs"); ph.forEach(u => { const im = el("img"); im.src = u; im.alt = "Photo"; im.loading = "lazy"; th.append(im); }); card.append(th); }
+    const setStatus = async status => {
+      const res = await sb.from("listings").update({ status }).eq("id", r.id);
+      if (res.error) { toast("Could not update. Try again."); return; }
+      toast(status === "active" ? "Approved. It is now on the map." : "Removed."); reloadListings(); viewAdmin(tab);
+    };
+    const acts = el("div", "row");
+    if (tab === "pending") acts.append(btnEl("Approve", "btn small wa", () => setStatus("active")), btnEl("Reject", "btn small danger", () => setStatus("rejected")));
+    else acts.append(btnEl("Remove from map", "btn small danger", () => setStatus("rejected")));
+    card.append(acts); body.append(card);
+  });
+  body.append(btnEl("Back", "btn quiet", viewHome));
+}
+
+/* ---- Start ---- */
+async function loadListings(quiet) {
+  if (sb) {
+    try { return await loadFromSupabase(); }
+    catch (e) { if (!quiet) toast("Listings could not load. Please try again in a minute."); return []; }
+  }
+  if (!CONFIG.sheetCsvUrl) return SAMPLE_LISTINGS;
+  try {
+    const res = await fetch(CONFIG.sheetCsvUrl, { cache: "no-store" });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    return rowsToListings(parseCsv(await res.text()));
+  } catch (e) {
+    if (!quiet) toast("Listings could not load. Please try again in a minute.");
+    return [];
+  }
+}
+async function start() {
+  initSupabase();
+  $("postBtn").addEventListener("click", () => {
+    if (pickMode) { pickMode = null; $("notice").hidden = true; viewPost(); return; }
+    session ? viewHome() : viewAuth("in");
+  });
+  $("panelClose").addEventListener("click", closePanel);
+  $("panel").addEventListener("click", e => { if (e.target === $("panel")) closePanel(); });
+  initMap();
+  renderChips();
+  listings = await loadListings();
+  renderChips();
+  renderPins();
+  if (openFromHash()) {
+    const l = listings.find(x => x.id === selectedId);
+    if (map && l) map.setView([l.lat, l.lng], 15);
+  } else intro();
+  window.addEventListener("hashchange", openFromHash);
+  $("search").addEventListener("submit", e => { e.preventDefault(); clearTimeout(suggestTimer); suggestSeq++; hideSuggest(); const q = $("q").value.trim(); $("q").blur(); runSearch(q); });
+  $("q").addEventListener("input", onType);
+  if (CONFIG.sheetCsvUrl || CONFIG.supabaseUrl) setInterval(async () => {
+    const fresh = await loadListings(true);
+    if (fresh.length || sb) { listings = fresh; renderChips(); renderPins(); }
+  }, CONFIG.refreshSeconds * 1000);
+  document.addEventListener("keydown", e => { if (e.key === "Escape") { closeSheet(); closePanel(); } });
+}
+if (typeof document !== "undefined" && document.getElementById("map")) start();
+</script>
+</body>
+</html>

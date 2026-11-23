@@ -148,9 +148,6 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .search input:focus { outline: none; }
 .search:focus-within { outline: 3px solid #7fd6e2; }
 .search button { border: 0; background: var(--harbour); color: var(--on-dark); padding: 0 16px; font-weight: 600; }
-.stay { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.stay label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--ink-soft); min-width: 0; }
-.stay input { width: 100%; min-width: 0; padding: 10px; border: 1px solid var(--line); border-radius: 10px; background: #fff; color: var(--ink); font: inherit; font-size: 16px; }
 .notice {
   position: absolute; z-index: 1100;
   top: 68px; left: 50%; transform: translateX(-50%);
@@ -239,6 +236,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .contact .who { font-weight: 600; }
 .contact .num { font: 600 18px/1.2 var(--font-display); font-variant-numeric: tabular-nums; user-select: all; }
 .contact .hint { color: var(--ink-soft); font-size: 13px; }
+.contact .ref { font-size: 13px; font-weight: 600; }
 .btns { display: flex; flex-wrap: wrap; gap: 8px; }
 .btn {
   flex: 1 1 140px;
@@ -575,8 +573,9 @@ const CONFIG = {
   supabaseKey: "sb_publishable_xDA3eHM8MLT1nvQJi1nHww_MHUgEk-D",
 
   // Listings where the visitor sees the owner's number and contacts them directly.
-  // Everything else goes through your WhatsApp. Written as "category-deal".
-  directContact: ["house-rent", "house-lease"],
+  // Everything else shows only a "Call now" button to your number; you connect the call
+  // to the owner, so the owner's number stays private. Written as "category-deal".
+  directContact: ["house-rent"],
 
   // With a Google Sheet connected, new listings appear on open maps after this many seconds.
   refreshSeconds: 60,
@@ -1037,51 +1036,21 @@ function openListing(id) {
       c.append(el("p", "hint", "The owner's phone number will show here. No fee for tenants or owners."));
     }
   } else {
+    // Sale, lease, BnB and plots: the visitor calls us, and we connect the call to the
+    // owner. The owner's name and number are never sent to the visitor's browser.
     const stay = l.deal === "bnb";
-    c.append(el("p", "who", (stay ? "Request this stay through " : "Interested? Talk to ") + CONFIG.appName));
-    c.append(el("p", "hint", stay
-      ? "Pick your dates and send the request. We check availability with the host and reply on WhatsApp."
-      : "We arrange the site visit, document check and registration. Location shown is approximate."));
-    const base = "Hi, I'm interested in " + l.id + ": " + l.title + ", " + l.area + (l.price ? " (" + l.price + ")" : "") + ".";
-    let fIn, fOut, fGuests;
-    if (stay) {
-      const form = el("div", "stay");
-      const field = (id, label, type) => {
-        const lab = el("label", "", label), inp = el("input");
-        inp.type = type; inp.id = id; lab.append(inp); form.append(lab); return inp;
-      };
-      fIn = field("stayIn", "Check-in", "date");
-      fOut = field("stayOut", "Check-out", "date");
-      fGuests = field("stayGuests", "Guests", "number");
-      const today = new Date(); today.setMinutes(today.getMinutes() - today.getTimezoneOffset());
-      fIn.min = fOut.min = today.toISOString().slice(0, 10);
-      fGuests.min = "1"; fGuests.value = "2";
-      c.append(form);
-    }
-    const message = () => {
-      if (!stay) return base;
-      if (!fIn.value || !fOut.value) { toast("Choose your check-in and check-out dates."); return null; }
-      const nights = Math.round((new Date(fOut.value) - new Date(fIn.value)) / 86400000);
-      if (!(nights > 0)) { toast("Check-out must be after check-in."); return null; }
-      return base + " Booking request: " + fIn.value + " to " + fOut.value + " (" + nights + (nights === 1 ? " night" : " nights") + "), " + (parseInt(fGuests.value, 10) || 1) + " guests.";
-    };
-    const waText = stay ? "Send booking request" : "Contact us on WhatsApp";
-    if (digits(CONFIG.whatsappNumber)) {
-      const wa = el("a", "btn wa", waText);
-      wa.href = waLink(CONFIG.whatsappNumber, base); wa.target = "_blank"; wa.rel = "noopener";
-      wa.addEventListener("click", ev => {
-        const m = message();
-        if (!m) { ev.preventDefault(); return; }
-        wa.href = waLink(CONFIG.whatsappNumber, m);
-      });
-      btns.append(wa);
+    c.append(el("p", "who", "Call " + CONFIG.appName));
+    c.append(el("p", "hint", (stay
+      ? "We check availability with the host and connect you."
+      : "We connect your call to the owner and arrange the site visit.") + " The owner's number stays private."));
+    c.append(el("p", "ref", "Quote listing " + l.id + " when you call."));
+    const callNo = CONFIG.callNumber || CONFIG.whatsappNumber;
+    if (digits(callNo)) {
+      const call = el("a", "btn wa", "Call now");
+      call.href = "tel:" + (/^\+/.test(callNo.trim()) ? "+" : "") + digits(callNo);
+      btns.append(call);
     } else {
-      const wa = el("button", "btn wa", waText); wa.type = "button";
-      wa.addEventListener("click", () => { if (message()) toast("Add your WhatsApp number in the settings to switch this on."); });
-      btns.append(wa);
-    }
-    if (digits(CONFIG.callNumber)) {
-      const call = el("a", "btn", "Call us"); call.href = "tel:" + CONFIG.callNumber.replace(/[^\d+]/g, "");
+      const call = btnEl("Call now", "btn wa", () => toast("Add your phone number in the settings to switch this on."));
       btns.append(call);
     }
   }
@@ -1183,12 +1152,12 @@ function viewAbout() {
   const sec = (title, ...paras) => { const d = el("section", "about"); d.append(el("h3", "", title)); paras.forEach(p => d.append(el("p", "", p))); body.append(d); };
   body.append(el("p", "msg", n + " shows verified houses and lands on a satellite map, so you can see exactly where a property is before you visit."));
   sec("How it works",
-    "Houses for rent or lease: call or WhatsApp the owner directly. No fee for tenants or owners.",
-    "Houses and plots for sale, and BnB stays: contact " + n + ". We arrange the site visit, document check and registration.",
+    "Houses for rent: call or WhatsApp the owner directly. No fee for tenants or owners.",
+    "Everything else (sale, lease, BnB stays and plots): call " + n + " and we connect you to the owner. The owner's number stays private.",
     "Owners: posting is free. Every listing is checked by " + n + " before it appears on the map.");
   sec("Privacy",
     "When you post a property we store your email address, the listing details and photos, and your name and phone number.",
-    "Your phone number is shown to visitors only for houses for rent or lease. For sales, plots and stays it is seen only by " + n + ".",
+    "Your phone number is shown to visitors only for houses for rent. For sale, lease, stays and plots it is seen only by " + n + ".",
     "The app asks for your location only to centre the map near you. It is not saved. Place searches are sent to OpenStreetMap services to find the place.",
     "You can edit or delete your listings at any time from My listings. To delete your account, contact us.");
   sec("Please note", "Listing details are provided by owners. Always check the documents and see the property in person before you pay anything.");
@@ -1474,7 +1443,7 @@ function viewPost() {
     price.placeholder = "e.g. " + PLACEHOLDER_PRICE[draft.deal];
     note.textContent = isDirect(draft)
       ? "Your name and phone number will be shown to people who tap your listing, so they can call you."
-      : "Your phone number stays private. Buyers and guests contact " + CONFIG.appName + ", and we connect them with you.";
+      : "Your phone number stays private. Callers reach " + CONFIG.appName + " first, and we connect the call to you.";
   };
   cat.addEventListener("change", () => { draft.category = cat.value; fillDeals(); });
   deal.addEventListener("change", () => { draft.deal = deal.value; fillDeals(); });

@@ -12,8 +12,8 @@ The whole app is one static page (`index.html`), so it can be hosted anywhere th
 - Place search with suggestions, and a "near me" view
 - List view of listings in the current map area, nearest first
 - Listing card with photos (full-screen viewer with swipe), YouTube video, price and details
-- Contact the owner directly for house rent and house lease; everything else goes through your WhatsApp
-- BnB booking request with dates and guests, sent on WhatsApp
+- Houses for rent: contact the owner directly by call or WhatsApp
+- Sale, lease, BnB and plots: a single "Call now" button rings your number, and you connect the caller to the owner. The owner's number is never shown.
 - Share links to any listing
 - About page with how it works and a plain-language privacy note
 - Installable on phones (Add to Home screen), with a link-preview image for WhatsApp shares
@@ -35,9 +35,9 @@ Open `index.html` and find the `CONFIG` block near the top of the script:
 | Setting | What to put |
 | --- | --- |
 | `whatsappNumber` | Your business WhatsApp number, country code first, digits only, e.g. `919876543210`. **Required:** the main contact buttons do nothing without it. |
-| `callNumber` | Number for the "Call us" button. Leave `""` to hide it. |
+| `callNumber` | Number visitors call for sale, lease, BnB and plot listings (you then connect them to the owner). Falls back to `whatsappNumber` if empty. |
 | `supabaseUrl`, `supabaseKey` | Your Supabase project URL and publishable (anon) key. Both are public by design. |
-| `directContact` | Which listings show the owner's phone to visitors. Default: house rent and house lease. |
+| `directContact` | Which listings show the owner's phone to visitors. Default: house rent only. |
 
 ### 2. Database (Supabase)
 1. Supabase dashboard > **SQL Editor** > New query.
@@ -50,7 +50,7 @@ Open `index.html` and find the `CONFIG` block near the top of the script:
    ```
 
 What the SQL file enforces, whatever the app does:
-- Owner phone numbers are readable by visitors only for **live house rent and house lease** listings. Sale, plot and BnB numbers are seen only by the owner and admins.
+- Owner phone numbers are readable by visitors only for **live house rent** listings. Sale, lease, plot and BnB numbers are seen only by the owner and admins.
 - Owners cannot approve their own listings. New listings and any owner edit go to "Waiting" until an admin approves.
 - Owners can only edit or delete their own listings and photos.
 

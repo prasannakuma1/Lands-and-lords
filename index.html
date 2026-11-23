@@ -4,8 +4,24 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Lands n Lords</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230c3b41'/%3E%3Cpath d='M6 16 16 8l10 8M9 14v8h14v-8M5 25h22' fill='none' stroke='%23f4b740' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
-<meta name="description" content="Houses for rent, houses for sale and plots on a satellite map.">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="icon" href="icons/icon-192.png" sizes="192x192" type="image/png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0c3b41">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Lands n Lords">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="description" content="Verified houses for rent, sale and lease, BnB stays and plots on a satellite map. Contact owners directly or through Lands n Lords.">
+<!-- Link previews (WhatsApp, Facebook, X). Change og:image to your full site address once it is live, e.g. https://yourname.github.io/Lands-and-lords/icons/og-image.jpg -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Lands n Lords">
+<meta property="og:title" content="Lands n Lords: verified houses and lands">
+<meta property="og:description" content="Houses for rent, sale and lease, BnB stays and plots on a satellite map.">
+<meta property="og:image" content="icons/og-image.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@600;700&display=swap">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
@@ -358,6 +374,93 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: var(--harbour); box-shadow: 0 0 0 3px rgba(12,59,65,.15); }
 .item { border-radius: 14px; }
 
+/* ---------- Brand button, loading, clusters ---------- */
+button.brand { border: 0; background: none; padding: 0; margin: 0; color: inherit; text-align: left; border-radius: 8px; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.loading {
+  position: absolute; z-index: 1100; top: 72px; left: 50%; transform: translateX(-50%);
+  display: inline-flex; align-items: center; gap: 10px;
+  background: #fff; color: var(--ink); padding: 9px 16px; border-radius: 999px;
+  font-size: 13px; font-weight: 600; box-shadow: var(--shadow-1);
+}
+.spin { width: 16px; height: 16px; border-radius: 50%; border: 2.5px solid var(--line); border-top-color: var(--harbour); animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.cluster {
+  width: 42px; height: 42px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--harbour); color: #fff;
+  border: 3px solid #fff; box-shadow: 0 0 0 5px rgba(244,183,64,.55), 0 3px 10px rgba(0,0,0,.45);
+  font: 700 14px/1 var(--font-display); font-variant-numeric: tabular-nums;
+}
+.leaflet-cluster-anim .leaflet-marker-icon, .leaflet-cluster-anim .leaflet-marker-shadow { transition: transform .3s ease-out, opacity .3s ease-in; }
+.leaflet-cluster-spider-leg { transition: stroke-dashoffset .3s ease-out, stroke-opacity .3s ease-in; }
+@media (prefers-reduced-motion: reduce) { .spin { animation-duration: 2s; } .leaflet-cluster-anim .leaflet-marker-icon { transition: none; } }
+
+/* ---------- Listing sheet photos ---------- */
+.photos { scroll-snap-type: x mandatory; margin: 0 -2px; padding: 0 2px; scrollbar-width: thin; }
+.photos .photo { flex: none; padding: 0; border: 0; background: #dfe7e6; border-radius: 12px; overflow: hidden; scroll-snap-align: start; cursor: zoom-in; }
+.photos .photo img { display: block; height: 190px; width: auto; max-width: 300px; object-fit: cover; border-radius: 0; }
+.photos .photo:only-child { width: 100%; }
+.photos .photo:only-child img { width: 100%; max-width: none; height: 220px; }
+
+/* ---------- Photo viewer ---------- */
+.viewer { position: fixed; inset: 0; z-index: 1800; background: rgba(2,10,12,.94); display: grid; place-items: center; }
+.viewer img { max-width: 100%; max-height: 100%; object-fit: contain; padding: 56px 12px; }
+.viewer-btn {
+  position: absolute; width: 46px; height: 46px; border: 0; border-radius: 50%;
+  background: rgba(255,255,255,.14); color: #fff; font-size: 30px; line-height: 1; display: grid; place-items: center;
+}
+.viewer-btn:hover { background: rgba(255,255,255,.26); }
+.viewer-x { top: calc(10px + env(safe-area-inset-top, 0px)); right: 12px; }
+.viewer-prev { left: 12px; top: 50%; transform: translateY(-50%); }
+.viewer-next { right: 12px; top: 50%; transform: translateY(-50%); }
+.viewer-n { position: absolute; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); left: 50%; transform: translateX(-50%); color: #fff; font-size: 13px; opacity: .8; font-variant-numeric: tabular-nums; }
+
+/* ---------- List view cards ---------- */
+.lcard {
+  display: flex; gap: 12px; align-items: stretch; text-align: left; width: 100%;
+  padding: 10px; border: 1px solid var(--line); border-radius: 14px; background: #fff; color: var(--ink);
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+.lcard:hover { border-color: #b9cbca; box-shadow: 0 2px 10px rgba(6,38,42,.1); }
+.lcard-cover { flex: none; width: 96px; height: 84px; border-radius: 10px; overflow: hidden; display: grid; place-items: center; color: #fff; font: 700 26px/1 var(--font-display); }
+.lcard-cover img { width: 100%; height: 100%; object-fit: cover; }
+.lcard-cover.rent { background: var(--rent); } .lcard-cover.sale { background: var(--sale); } .lcard-cover.lease { background: var(--lease); } .lcard-cover.bnb { background: var(--bnb); }
+.lcard-text { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; min-width: 0; }
+.lcard-text strong { font: 600 15px/1.3 var(--font-display); }
+.lcard-area { color: var(--ink-soft); font-size: 13px; }
+.lcard-price { font-weight: 700; color: var(--harbour); font-variant-numeric: tabular-nums; }
+.lcard .badge { padding: 1px 8px; font-size: 11px; }
+
+/* ---------- Account panel extras ---------- */
+.stack { display: flex; flex-direction: column; gap: 12px; }
+.field-label { font-size: 13px; color: var(--ink-soft); margin-bottom: -6px; }
+.add-photos { position: relative; align-self: flex-start; cursor: pointer; }
+.add-photos.is-off { opacity: .5; cursor: default; }
+.add-photos:focus-within { outline: 3px solid #7fd6e2; outline-offset: 2px; }
+.thumbs.editable { flex-wrap: wrap; overflow: visible; }
+.thumb { position: relative; flex: none; }
+.thumb img { display: block; width: 84px; height: 84px; object-fit: cover; border-radius: 10px; }
+.thumb-x {
+  position: absolute; top: -7px; right: -7px; width: 26px; height: 26px; border-radius: 50%;
+  border: 2px solid #fff; background: var(--ink); color: #fff; font-size: 16px; line-height: 1; display: grid; place-items: center; padding: 0;
+}
+.thumbs img { cursor: zoom-in; }
+.item-head { display: flex; gap: 12px; align-items: center; min-width: 0; }
+.item-cover { width: 64px; height: 64px; object-fit: cover; border-radius: 10px; flex: none; }
+.item .note { background: #fff4e0; color: #5c3d00; border-radius: 10px; padding: 8px 10px; font-size: 13px; }
+.when { font-size: 12px; color: var(--ink-soft); margin-left: auto; }
+.tabs { flex-wrap: wrap; }
+.tab { padding: 7px 14px; border-radius: 999px; border: 1px solid var(--line); background: #fff; color: var(--ink); font-size: 13px; font-weight: 600; }
+.tab[aria-pressed="true"] { background: var(--harbour); border-color: var(--harbour); color: var(--on-dark); }
+.about h3 { margin: 4px 0 6px; font: 600 15px/1.3 var(--font-display); }
+.about p { margin: 0 0 8px; font-size: 14px; color: var(--ink); max-width: 65ch; }
+.btn.wa:hover { filter: brightness(1.06); }
+.btn:not(.wa):not(.quiet):not(.danger):hover { background: #eef4f4; }
+.tool:hover, .fab:hover { filter: brightness(.97); }
+/* The open listing card sits where the Post button is; hide the button while it is open. */
+.stage:has(.sheet:not([hidden])) .fab { display: none; }
+
 /* ---------- Leaflet essentials (fallback if the CDN stylesheet is blocked) ---------- */
 .leaflet-pane, .leaflet-tile, .leaflet-marker-icon, .leaflet-marker-shadow, .leaflet-tile-container,
 .leaflet-pane > svg, .leaflet-pane > canvas, .leaflet-zoom-box, .leaflet-image-layer, .leaflet-layer { position: absolute; left: 0; top: 0; }
@@ -392,13 +495,13 @@ button { font: inherit; color: inherit; cursor: pointer; }
 
 <header class="bar">
   <div class="bar-top">
-    <div class="brand">
+    <button class="brand" id="brandBtn" type="button" title="About">
       <svg class="mark" viewBox="0 0 32 32" aria-hidden="true"><path d="M5 15.5 16 6.5l11 9M8.5 13v9.5h15V13M3.5 26h25" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
       <div class="brand-text">
         <span class="brand-name" id="brandName"></span>
         <span class="brand-tag" id="brandTag"></span>
       </div>
-    </div>
+    </button>
     <div class="seg" id="seg" role="group" aria-label="Houses or lands"></div>
   </div>
   <div class="chips" id="chips" role="group" aria-label="Filter listings"></div>
@@ -412,7 +515,11 @@ button { font: inherit; color: inherit; cursor: pointer; }
   </form>
   <div class="suggest" id="suggest" hidden></div>
   <div class="notice" id="notice" hidden></div>
+  <div class="loading" id="loading" role="status"><span class="spin" aria-hidden="true"></span>Loading listings</div>
   <div class="tools">
+    <button class="tool" id="listBtn" type="button" aria-label="Show listings as a list" title="List">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1" fill="currentColor"/><circle cx="4.5" cy="12" r="1" fill="currentColor"/><circle cx="4.5" cy="18" r="1" fill="currentColor"/></svg>
+    </button>
     <button class="tool text" id="layerBtn" type="button" aria-label="Switch between satellite and street map">Map</button>
     <button class="tool" id="zoomIn" type="button" aria-label="Zoom in">+</button>
     <button class="tool" id="zoomOut" type="button" aria-label="Zoom out">&minus;</button>
@@ -432,7 +539,18 @@ button { font: inherit; color: inherit; cursor: pointer; }
   </div>
 </div>
 
+<div class="viewer" id="viewer" hidden role="dialog" aria-modal="true" aria-label="Photos">
+  <img id="viewerImg" alt="">
+  <button class="viewer-btn viewer-x" id="viewerClose" type="button" aria-label="Close photos">&times;</button>
+  <button class="viewer-btn viewer-prev" id="viewerPrev" type="button" aria-label="Previous photo">&#8249;</button>
+  <button class="viewer-btn viewer-next" id="viewerNext" type="button" aria-label="Next photo">&#8250;</button>
+  <div class="viewer-n" id="viewerN"></div>
+</div>
+
+<noscript><p style="position:fixed;inset:auto 0 0;margin:0;padding:16px;background:#fff;color:#10272b;text-align:center;z-index:2000">Please turn on JavaScript to use this app.</p></noscript>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
 /* =====================================================================
@@ -665,7 +783,13 @@ function initMap() {
     else { map.removeLayer(sat); map.removeLayer(labels); street.addTo(map); }
     $("layerBtn").textContent = satOn ? "Map" : "Sat";
   });
-  layer = L.layerGroup().addTo(map);
+  // Nearby pins merge into a numbered bubble when zoomed out; tap it to zoom in.
+  layer = (typeof L.markerClusterGroup === "function"
+    ? L.markerClusterGroup({
+        maxClusterRadius: 46, showCoverageOnHover: false, spiderfyOnMaxZoom: true,
+        iconCreateFunction: c => L.divIcon({ className: "pin-wrap", html: '<div class="cluster"><b>' + c.getChildCount() + "</b></div>", iconSize: [42, 42] })
+      })
+    : L.layerGroup()).addTo(map);
   map.on("click", e => { hideSuggest(); if (pickMode) { pickMode(e.latlng); return; } closeSheet(); });
 
   $("zoomIn").addEventListener("click", () => map.zoomIn());
@@ -812,8 +936,26 @@ function renderPins() {
   visible().forEach(l => {
     const m = L.marker([l.lat, l.lng], { icon: pinIcon(l, l.id === selectedId), title: l.title + ", " + l.area, keyboard: true });
     m.on("click", ev => { L.DomEvent.stopPropagation(ev); openListing(l.id); });
+    if (l.id === selectedId) m.setZIndexOffset(1000);
     m.addTo(layer); markers.set(l.id, m);
   });
+}
+/* Highlight one pin without rebuilding the others. */
+function setSelected(id) {
+  const prev = selectedId;
+  selectedId = id;
+  [prev, id].forEach(k => {
+    if (k == null) return;
+    const m = markers.get(k), l = listings.find(x => x.id === k);
+    if (m && l) { m.setIcon(pinIcon(l, k === selectedId)); m.setZIndexOffset(k === selectedId ? 1000 : 0); }
+  });
+}
+/* Open a listing and zoom in far enough that its pin is out of any cluster. */
+function focusListing(id) {
+  const l = listings.find(x => x.id === id);
+  if (!l) { toast("This listing is not on the map yet."); return; }
+  openListing(id);
+  if (map) map.setView([l.lat, l.lng], Math.max(map.getZoom(), 16));
 }
 
 /* ---- Listing sheet ---- */
@@ -822,9 +964,8 @@ function openListing(id) {
   if (!l) return;
   if (category !== l.category || (dealFilter !== "all" && dealFilter !== l.deal)) {
     category = l.category; dealFilter = "all"; renderChips();
-  }
-  selectedId = id;
-  renderPins();
+    selectedId = id; renderPins();
+  } else setSelected(id);
   if (map) map.panTo([l.lat, l.lng]);
   try { history.replaceState(null, "", "#" + encodeURIComponent(id)); } catch (e) {}
 
@@ -844,10 +985,22 @@ function openListing(id) {
   head.append(hl, x);
   s.append(head);
 
+  if (l.photos && l.photos.length) {
+    const ph = el("div", "photos");
+    l.photos.forEach((u, i) => {
+      const b = el("button", "photo"); b.type = "button"; b.setAttribute("aria-label", "Open photo " + (i + 1) + " of " + l.photos.length);
+      const im = el("img"); im.src = u; im.alt = l.title + " photo " + (i + 1); im.loading = "lazy";
+      b.append(im); b.addEventListener("click", () => openViewer(l.photos, i));
+      ph.append(b);
+    });
+    s.append(ph);
+  }
+
   const money = el("div");
   money.append(el("div", "price", l.price || "Price on request"));
   if (l.details) money.append(el("p", "facts", l.details));
   s.append(money);
+  if (l.description) s.append(el("p", "desc", l.description));
 
   const vid = youtubeId(l.video);
   if (vid) {
@@ -862,16 +1015,7 @@ function openListing(id) {
     const a = el("a", "video-link", "Open the video on YouTube");
     a.href = "https://www.youtube.com/watch?v=" + vid; a.target = "_blank"; a.rel = "noopener";
     s.append(box, a);
-  } else {
-    s.append(el("div", "video video-none", "Video walkthrough will appear here"));
   }
-
-  if (l.photos && l.photos.length) {
-    const ph = el("div", "photos");
-    l.photos.forEach((u, i) => { const im = el("img"); im.src = u; im.alt = l.title + " photo " + (i + 1); im.loading = "lazy"; ph.append(im); });
-    s.append(ph);
-  }
-  if (l.description) s.append(el("p", "desc", l.description));
 
   const c = el("div", "contact");
   const btns = el("div", "btns");
@@ -949,9 +1093,8 @@ function openListing(id) {
 }
 function closeSheet() {
   if (selectedId === null) return;
-  selectedId = null;
+  setSelected(null);
   $("sheet").hidden = true;
-  renderPins();
   try { history.replaceState(null, "", location.pathname + location.search); } catch (e) {}
 }
 function shareListing(l) {
@@ -969,9 +1112,94 @@ function openFromHash() {
   return false;
 }
 
+/* ---- List of listings in the current map area ---- */
+function viewList() {
+  const shown = visible();
+  const bounds = map ? map.getBounds() : null;
+  let items = bounds ? shown.filter(l => bounds.contains([l.lat, l.lng])) : shown;
+  const everywhere = !items.length;
+  if (everywhere) items = shown;
+  if (map) {
+    const c = map.getCenter(), here = [c.lat, c.lng];
+    items = items.slice().sort((a, b) => km(here, [a.lat, a.lng]) - km(here, [b.lat, b.lng]));
+  }
+  const kind = CATS[category].label.toLowerCase();
+  const body = openPanel(items.length + " " + (dealFilter === "all" ? kind : kind + " " + DEALS[dealFilter].label.toLowerCase()) + (everywhere ? "" : " in this area"));
+  if (!shown.length) { body.append(el("p", "msg soft", "No listings in this category yet.")); return; }
+  if (everywhere && bounds) body.append(el("p", "msg soft", "None in the area on your screen, so here are all of them, nearest first."));
+  items.forEach(l => {
+    const card = el("button", "lcard"); card.type = "button";
+    const cover = el("div", "lcard-cover " + l.deal);
+    if (l.photos && l.photos[0]) { const im = el("img"); im.src = l.photos[0]; im.alt = ""; im.loading = "lazy"; cover.append(im); }
+    else cover.append(el("span", "", DEALS[l.deal].letter));
+    const txt = el("div", "lcard-text");
+    txt.append(el("span", "badge " + l.deal, DEALS[l.deal].label), el("strong", "", l.title), el("span", "lcard-area", l.area), el("span", "lcard-price", l.price || "Price on request"));
+    card.append(cover, txt);
+    card.addEventListener("click", () => { closePanel(); focusListing(l.id); });
+    body.append(card);
+  });
+}
+
+/* ---- Full-screen photo viewer ---- */
+let viewerUrls = [], viewerAt = 0, viewerFrom = null;
+function showViewerPhoto() {
+  $("viewerImg").src = viewerUrls[viewerAt];
+  $("viewerImg").alt = "Photo " + (viewerAt + 1) + " of " + viewerUrls.length;
+  $("viewerN").textContent = viewerUrls.length > 1 ? (viewerAt + 1) + " / " + viewerUrls.length : "";
+  $("viewerPrev").hidden = $("viewerNext").hidden = viewerUrls.length < 2;
+}
+function openViewer(urls, i) {
+  viewerUrls = urls; viewerAt = i || 0; viewerFrom = document.activeElement;
+  showViewerPhoto();
+  $("viewer").hidden = false;
+  $("viewerClose").focus();
+}
+function closeViewer() {
+  if ($("viewer").hidden) return false;
+  $("viewer").hidden = true; $("viewerImg").removeAttribute("src");
+  if (viewerFrom && viewerFrom.focus) viewerFrom.focus();
+  return true;
+}
+function stepViewer(d) { viewerAt = (viewerAt + d + viewerUrls.length) % viewerUrls.length; showViewerPhoto(); }
+function initViewer() {
+  $("viewerClose").addEventListener("click", closeViewer);
+  $("viewerPrev").addEventListener("click", () => stepViewer(-1));
+  $("viewerNext").addEventListener("click", () => stepViewer(1));
+  $("viewer").addEventListener("click", e => { if (e.target === $("viewer")) closeViewer(); });
+  let x0 = null;
+  $("viewer").addEventListener("touchstart", e => { x0 = e.touches[0].clientX; }, { passive: true });
+  $("viewer").addEventListener("touchend", e => {
+    if (x0 == null || viewerUrls.length < 2) return;
+    const dx = e.changedTouches[0].clientX - x0; x0 = null;
+    if (Math.abs(dx) > 50) stepViewer(dx < 0 ? 1 : -1);
+  });
+}
+
+/* ---- About, how it works, privacy ---- */
+function viewAbout() {
+  const n = CONFIG.appName;
+  const body = openPanel("About " + n);
+  const sec = (title, ...paras) => { const d = el("section", "about"); d.append(el("h3", "", title)); paras.forEach(p => d.append(el("p", "", p))); body.append(d); };
+  body.append(el("p", "msg", n + " shows verified houses and lands on a satellite map, so you can see exactly where a property is before you visit."));
+  sec("How it works",
+    "Houses for rent or lease: call or WhatsApp the owner directly. No fee for tenants or owners.",
+    "Houses and plots for sale, and BnB stays: contact " + n + ". We arrange the site visit, document check and registration.",
+    "Owners: posting is free. Every listing is checked by " + n + " before it appears on the map.");
+  sec("Privacy",
+    "When you post a property we store your email address, the listing details and photos, and your name and phone number.",
+    "Your phone number is shown to visitors only for houses for rent or lease. For sales, plots and stays it is seen only by " + n + ".",
+    "The app asks for your location only to centre the map near you. It is not saved. Place searches are sent to OpenStreetMap services to find the place.",
+    "You can edit or delete your listings at any time from My listings. To delete your account, contact us.");
+  sec("Please note", "Listing details are provided by owners. Always check the documents and see the property in person before you pay anything.");
+  const btns = el("div", "btns");
+  if (digits(CONFIG.whatsappNumber)) { const a = el("a", "btn wa", "WhatsApp us"); a.href = waLink(CONFIG.whatsappNumber, "Hi " + n + ", "); a.target = "_blank"; a.rel = "noopener"; btns.append(a); }
+  if (digits(CONFIG.callNumber)) { const a = el("a", "btn", "Call us"); a.href = "tel:" + CONFIG.callNumber.replace(/[^\d+]/g, ""); btns.append(a); }
+  if (btns.childNodes.length) body.append(btns);
+}
+
 /* ---- Owner accounts, posting and approval (Supabase) ---- */
 let sb = null, session = null, isAdmin = false, pickMode = null, draftMarker = null;
-const newDraft = () => ({ category: "house", deal: "rent", title: "", area: "", price: "", details: "", description: "", video: "", ownerName: "", ownerPhone: "", lat: null, lng: null, files: [] });
+const newDraft = () => ({ id: null, publicId: "", wasStatus: "", photos: [], removed: [], category: "house", deal: "rent", title: "", area: "", price: "", details: "", description: "", video: "", ownerName: "", ownerPhone: "", lat: null, lng: null, files: [] });
 let draft = newDraft();
 const PLACEHOLDER_PRICE = { rent: "₹14,000 / month", sale: "₹78 Lakh", lease: "₹6 Lakh lease", bnb: "₹2,800 / night" };
 const STATUS_TEXT = { pending: "Waiting for approval", active: "Live on the map", rejected: "Not approved" };
@@ -981,7 +1209,12 @@ function initSupabase() {
   sb = window.supabase.createClient(CONFIG.supabaseUrl, CONFIG.supabaseKey);
   $("postBtn").hidden = false;
   sb.auth.getSession().then(({ data }) => { session = data.session; return refreshAdmin(); }).then(updateFab).catch(() => {});
-  sb.auth.onAuthStateChange((_e, s) => { session = s; setTimeout(() => { refreshAdmin().then(updateFab).catch(() => {}); }, 0); });
+  sb.auth.onAuthStateChange((event, s) => {
+    session = s;
+    // Opened from a "reset password" email: ask for the new password straight away.
+    if (event === "PASSWORD_RECOVERY") setTimeout(viewNewPassword, 0);
+    setTimeout(() => { refreshAdmin().then(updateFab).catch(() => {}); }, 0);
+  });
 }
 async function refreshAdmin() {
   isAdmin = false;
@@ -992,13 +1225,19 @@ async function refreshAdmin() {
 function updateFab() { $("postBtn").textContent = session ? "My account" : "+ Post property"; }
 
 async function loadFromSupabase() {
-  const [a, b] = await Promise.all([
-    sb.from("listings").select("*").eq("status", "active"),
-    sb.from("listing_contacts").select("*")
-  ]);
+  const a = await sb.from("listings").select("*").eq("status", "active");
   if (a.error) throw a.error;
-  const contacts = new Map(((b.data) || []).map(c => [c.listing_id, c]));
-  return a.data.map(r => {
+  const rows = (a.data || []).filter(r => CATS[r.category] && CATS[r.category].deals.includes(r.deal) && isFinite(r.lat) && isFinite(r.lng));
+  // Ask only for the phone numbers visitors are meant to see. The database rules
+  // (supabase/schema.sql) enforce the same thing, so other numbers never leave the server.
+  const directIds = rows.filter(isDirect).map(r => r.id);
+  let contactRows = [];
+  if (directIds.length) {
+    const b = await sb.from("listing_contacts").select("listing_id,owner_name,owner_phone").in("listing_id", directIds);
+    contactRows = b.data || [];
+  }
+  const contacts = new Map(contactRows.map(c => [c.listing_id, c]));
+  return rows.map(r => {
     const c = contacts.get(r.id) || {};
     const direct = isDirect(r);
     return {
@@ -1015,57 +1254,113 @@ async function reloadListings() {
 }
 
 /* ---- panel helpers ---- */
+let panelFrom = null;
 function openPanel(title) {
+  if ($("panel").hidden) panelFrom = document.activeElement;
   $("panelTitle").textContent = title;
   const b = $("panelBody"); b.textContent = "";
   $("panel").hidden = false;
   $("panel").querySelector(".panel-in").scrollTop = 0;
+  setTimeout(() => { if (!$("panel").contains(document.activeElement)) $("panelClose").focus(); }, 0);
   return b;
 }
-function closePanel() { $("panel").hidden = true; }
+function closePanel() {
+  if ($("panel").hidden) return;
+  $("panel").hidden = true;
+  if (panelFrom && panelFrom.focus && document.contains(panelFrom)) panelFrom.focus();
+}
 function inp(tag, props) { const n = document.createElement(tag); Object.assign(n, props || {}); return n; }
 function fieldOf(label, control) { const w = el("label", "field"); w.append(el("span", "", label), control); return w; }
 function btnEl(text, cls, fn) { const b = el("button", cls, text); b.type = "button"; b.addEventListener("click", fn); return b; }
 function say(node, kind, text) { node.className = "msg " + kind; node.textContent = text; }
 
 /* ---- sign in ---- */
+function friendlyAuthError(m) {
+  m = String(m || "");
+  if (/rate limit/i.test(m)) return "Too many emails were sent. Please try again in an hour, or ask " + CONFIG.appName + " to switch off email confirmation.";
+  if (/already registered|already exists/i.test(m)) return "This email already has an account. Tap \"I already have an account\" and sign in.";
+  if (/invalid login/i.test(m)) return "Wrong email or password.";
+  if (/email not confirmed/i.test(m)) return "Please confirm your email first. Check your inbox (and spam folder) for the link.";
+  if (/failed to fetch|network|load failed/i.test(m)) return "Could not reach the server. Check your internet connection and try again.";
+  return m || "Something went wrong. Please try again.";
+}
+const validEmail = s => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(s).trim());
+
 function viewAuth(mode) {
   const up = mode === "up";
   const body = openPanel(up ? "Create account" : "Sign in");
   body.append(el("p", "msg soft", up ? "Create an owner account to post your property. Posting is free." : "Sign in to post and manage your listings."));
-  const email = inp("input", { type: "email", id: "authEmail", autocomplete: "email" });
+  const email = inp("input", { type: "email", id: "authEmail", autocomplete: "email", inputMode: "email" });
   const pass = inp("input", { type: "password", id: "authPass", autocomplete: up ? "new-password" : "current-password" });
   const msg = el("p", "msg");
+  msg.setAttribute("role", "alert");
   const go = btnEl(up ? "Create account" : "Sign in", "btn wa", async () => {
     say(msg, "", "");
-    if (!email.value.trim() || pass.value.length < 6) { say(msg, "err", "Enter your email and a password of at least 6 characters."); return; }
-    go.disabled = true;
+    if (!validEmail(email.value) || pass.value.length < 6) { say(msg, "err", "Enter your email and a password of at least 6 characters."); return; }
+    go.disabled = true; go.textContent = up ? "Creating account..." : "Signing in...";
     const creds = { email: email.value.trim(), password: pass.value };
     let res;
     try { res = up ? await sb.auth.signUp(creds) : await sb.auth.signInWithPassword(creds); }
-    catch (e) { res = { error: { message: "Could not reach the server. Check your internet connection." } }; }
-    go.disabled = false;
-    if (res.error) {
-      const m = res.error.message || "";
-      let text = m;
-      if (/rate limit/i.test(m)) text = "Too many sign-up emails were sent. Please try again in an hour, or ask " + CONFIG.appName + " to switch off email confirmation.";
-      else if (/already registered|already exists/i.test(m)) text = "This email already has an account. Tap \"I already have an account\" and sign in.";
-      else if (/invalid login/i.test(m)) text = "Wrong email or password.";
-      else if (/failed to fetch|network|load failed/i.test(m)) text = "Could not reach the server. Check your internet connection and try again.";
-      say(msg, "err", text); return;
-    }
+    catch (e) { res = { error: { message: "network" } }; }
+    go.disabled = false; go.textContent = up ? "Create account" : "Sign in";
+    if (res.error) { say(msg, "err", friendlyAuthError(res.error.message)); return; }
     if (!res.data.session) { say(msg, "ok", "Check your email to confirm your account, then sign in."); return; }
     session = res.data.session; await refreshAdmin(); updateFab(); viewHome();
   });
-  body.append(fieldOf("Email", email), fieldOf("Password", pass), msg, go,
-    btnEl(up ? "I already have an account" : "Create a new account", "btn quiet", () => viewAuth(up ? "in" : "up")));
+  const form = el("form", "stack");
+  form.addEventListener("submit", e => { e.preventDefault(); go.click(); });
+  form.append(fieldOf("Email", email), fieldOf("Password", pass), msg, go);
+  body.append(form);
+  if (!up) body.append(btnEl("Forgot password?", "btn quiet", () => viewForgot(email.value)));
+  body.append(btnEl(up ? "I already have an account" : "Create a new account", "btn quiet", () => viewAuth(up ? "in" : "up")));
+  setTimeout(() => email.focus(), 50);
+}
+
+function viewForgot(prefill) {
+  const body = openPanel("Reset password");
+  body.append(el("p", "msg soft", "Enter the email you signed up with. We will send you a link to choose a new password."));
+  const email = inp("input", { type: "email", autocomplete: "email", inputMode: "email", value: prefill || "" });
+  const msg = el("p", "msg");
+  msg.setAttribute("role", "alert");
+  const go = btnEl("Send reset link", "btn wa", async () => {
+    if (!validEmail(email.value)) { say(msg, "err", "Enter a valid email address."); return; }
+    go.disabled = true; say(msg, "soft", "Sending...");
+    let res;
+    try { res = await sb.auth.resetPasswordForEmail(email.value.trim(), { redirectTo: location.origin + location.pathname }); }
+    catch (e) { res = { error: { message: "network" } }; }
+    go.disabled = false;
+    if (res.error) { say(msg, "err", friendlyAuthError(res.error.message)); return; }
+    say(msg, "ok", "If an account exists for this email, a reset link is on its way. Open it on this device.");
+  });
+  body.append(fieldOf("Email", email), msg, go, btnEl("Back to sign in", "btn quiet", () => viewAuth("in")));
+}
+
+function viewNewPassword() {
+  const body = openPanel("Choose a new password");
+  const pass = inp("input", { type: "password", autocomplete: "new-password" });
+  const pass2 = inp("input", { type: "password", autocomplete: "new-password" });
+  const msg = el("p", "msg");
+  msg.setAttribute("role", "alert");
+  const go = btnEl("Save new password", "btn wa", async () => {
+    if (pass.value.length < 6) { say(msg, "err", "Use at least 6 characters."); return; }
+    if (pass.value !== pass2.value) { say(msg, "err", "The two passwords do not match."); return; }
+    go.disabled = true;
+    let res;
+    try { res = await sb.auth.updateUser({ password: pass.value }); }
+    catch (e) { res = { error: { message: "network" } }; }
+    go.disabled = false;
+    if (res.error) { say(msg, "err", friendlyAuthError(res.error.message)); return; }
+    toast("Password changed."); viewHome();
+  });
+  body.append(fieldOf("New password", pass), fieldOf("Repeat new password", pass2), msg, go);
 }
 
 /* ---- account home ---- */
 function viewHome() {
+  if (!session) { viewAuth("in"); return; }
   const body = openPanel("My account");
   body.append(el("p", "msg soft", "Signed in as " + session.user.email));
-  body.append(btnEl("Post a property", "btn wa", () => viewPost()));
+  body.append(btnEl("Post a property", "btn wa", startPost));
   body.append(btnEl("My listings", "btn", viewMine));
   if (isAdmin) {
     const b = btnEl("Review listings", "btn", () => viewAdmin("pending"));
@@ -1073,12 +1368,48 @@ function viewHome() {
     sb.from("listings").select("id", { count: "exact", head: true }).eq("status", "pending")
       .then(({ count }) => { if (count) b.textContent = "Review listings (" + count + " waiting)"; });
   }
+  body.append(btnEl("About " + CONFIG.appName, "btn quiet", viewAbout));
   body.append(btnEl("Sign out", "btn quiet", async () => {
     await sb.auth.signOut(); session = null; isAdmin = false; updateFab(); closePanel(); toast("Signed out.");
   }));
 }
 
-/* ---- post a property ---- */
+/* ---- photos ---- */
+const MAX_PHOTOS = 4;
+/* Phone photos are often 4-10 MB. Resize to 1600 px JPEG before upload: faster for
+   owners on mobile data and for visitors. Falls back to the original file. */
+async function shrinkPhoto(file) {
+  try {
+    if (typeof createImageBitmap !== "function") return file;
+    const bmp = await createImageBitmap(file);
+    const s = Math.min(1, 1600 / Math.max(bmp.width, bmp.height));
+    if (s === 1 && file.size < 900 * 1024 && /jpeg|webp/.test(file.type)) return file;
+    const c = document.createElement("canvas");
+    c.width = Math.round(bmp.width * s); c.height = Math.round(bmp.height * s);
+    c.getContext("2d").drawImage(bmp, 0, 0, c.width, c.height);
+    const blob = await new Promise(r => c.toBlob(r, "image/jpeg", 0.82));
+    return blob && blob.size < file.size ? new File([blob], "photo.jpg", { type: "image/jpeg" }) : file;
+  } catch (e) { return file; }
+}
+function storagePath(url) {
+  const m = String(url || "").match(/\/object\/public\/photos\/([^?#]+)/);
+  return m ? decodeURIComponent(m[1]) : null;
+}
+async function removePhotos(urls) {
+  const paths = (urls || []).map(storagePath).filter(Boolean);
+  if (!paths.length || !sb) return;
+  try { await sb.storage.from("photos").remove(paths); } catch (e) { /* best effort */ }
+}
+function thumb(src, onRemove) {
+  const w = el("div", "thumb");
+  const im = el("img"); im.src = src; im.alt = "Photo";
+  if (src.startsWith("blob:")) im.addEventListener("load", () => URL.revokeObjectURL(src), { once: true });
+  const x = btnEl("×", "thumb-x", onRemove); x.setAttribute("aria-label", "Remove photo");
+  w.append(im, x);
+  return w;
+}
+
+/* ---- post or edit a property ---- */
 function showDraftMarker() {
   if (!map || draft.lat == null) return;
   const p = [draft.lat, draft.lng];
@@ -1086,10 +1417,42 @@ function showDraftMarker() {
   else draftMarker = L.circleMarker(p, { radius: 9, color: "#fff", weight: 3, fillColor: "#ff7a00", fillOpacity: 1, interactive: false }).addTo(map);
 }
 function clearDraftMarker() { if (draftMarker) { draftMarker.remove(); draftMarker = null; } }
+function startPost() {
+  if (draft.id) { draft = newDraft(); clearDraftMarker(); }
+  viewPost();
+}
+async function editListing(uid) {
+  const body = openPanel("Edit listing");
+  body.append(el("p", "msg soft", "Loading..."));
+  const [a, b] = await Promise.all([
+    sb.from("listings").select("*").eq("id", uid).single(),
+    sb.from("listing_contacts").select("owner_name,owner_phone").eq("listing_id", uid).maybeSingle()
+  ]);
+  if (a.error || !a.data) {
+    body.textContent = "";
+    body.append(el("p", "msg err", "Could not open this listing. Please try again."), btnEl("Back", "btn quiet", viewMine));
+    return;
+  }
+  const r = a.data, c = b.data || {};
+  draft = Object.assign(newDraft(), {
+    id: r.id, publicId: r.public_id, wasStatus: r.status,
+    category: r.category, deal: r.deal, title: r.title || "", area: r.area || "", price: r.price || "",
+    details: r.details || "", description: r.description || "", video: r.video || "",
+    ownerName: c.owner_name || "", ownerPhone: c.owner_phone || "",
+    lat: r.lat, lng: r.lng, photos: (r.photos || []).slice()
+  });
+  clearDraftMarker(); showDraftMarker();
+  viewPost();
+}
 
 function viewPost() {
-  const body = openPanel("Post a property");
-  body.append(el("p", "msg soft", "Posting is free. Your listing appears on the map after " + CONFIG.appName + " approves it."));
+  const editing = !!draft.id;
+  const body = openPanel(editing ? "Edit listing " + (draft.publicId || "") : "Post a property");
+  body.append(el("p", "msg soft", editing
+    ? (draft.wasStatus === "active"
+      ? "Saving sends your changes for approval. The listing is off the map until " + CONFIG.appName + " approves it again."
+      : "Saving sends your changes for approval.")
+    : "Posting is free. Your listing appears on the map after " + CONFIG.appName + " approves it."));
   const bind = (key, tag, props) => {
     const n = inp(tag, Object.assign({ id: "f_" + key, value: draft[key] || "" }, props));
     n.addEventListener("input", () => { draft[key] = n.value; });
@@ -1116,9 +1479,32 @@ function viewPost() {
   deal.addEventListener("change", () => { draft.deal = deal.value; fillDeals(); });
   fillDeals();
 
-  const photos = inp("input", { type: "file", id: "f_photos", accept: "image/*", multiple: true });
-  const photoNote = el("p", "msg soft", draft.files.length ? draft.files.length + " photo(s) selected." : "Up to 4 photos, 6 MB each.");
-  photos.addEventListener("change", () => { draft.files = Array.from(photos.files).slice(0, 4); photoNote.textContent = draft.files.length + " photo(s) selected."; });
+  // Photos: kept ones (already uploaded) plus newly picked files, up to MAX_PHOTOS.
+  const photos = inp("input", { type: "file", id: "f_photos", accept: "image/*", multiple: true, className: "sr-only" });
+  const addPhotos = el("label", "btn small add-photos");
+  addPhotos.append(document.createTextNode("+ Add photos"), photos);
+  const photoBox = el("div", "thumbs editable");
+  const photoNote = el("p", "msg soft");
+  const renderPhotos = () => {
+    photoBox.textContent = "";
+    draft.photos.forEach((u, i) => photoBox.append(thumb(u, () => { draft.removed.push(u); draft.photos.splice(i, 1); renderPhotos(); })));
+    draft.files.forEach((f, i) => photoBox.append(thumb(URL.createObjectURL(f), () => { draft.files.splice(i, 1); renderPhotos(); })));
+    const n = draft.photos.length + draft.files.length;
+    photoBox.hidden = !n;
+    photoNote.textContent = n ? n + " of " + MAX_PHOTOS + " photos. The first photo is the cover." : "Add up to " + MAX_PHOTOS + " photos. Large photos are resized automatically.";
+    photos.disabled = n >= MAX_PHOTOS;
+    addPhotos.classList.toggle("is-off", n >= MAX_PHOTOS);
+  };
+  photos.addEventListener("change", () => {
+    const room = MAX_PHOTOS - draft.photos.length - draft.files.length;
+    const picked = Array.from(photos.files).filter(f => /^image\//.test(f.type));
+    if (picked.length < photos.files.length) toast("Only photos can be added.");
+    else if (picked.length > room) toast("A listing can have up to " + MAX_PHOTOS + " photos.");
+    draft.files = draft.files.concat(picked.slice(0, Math.max(room, 0)));
+    photos.value = "";
+    renderPhotos();
+  });
+  renderPhotos();
 
   const locText = el("p", "msg soft");
   const showLoc = () => { locText.textContent = draft.lat == null ? "Location not set yet. Use the buttons below." : "Location set (" + draft.lat.toFixed(5) + ", " + draft.lng.toFixed(5) + ")."; };
@@ -1130,52 +1516,78 @@ function viewPost() {
       if (map) map.setView([draft.lat, draft.lng], 17);
     }, () => toast("Could not get your location. Allow location access, or pick the spot on the map."), { enableHighAccuracy: true, timeout: 15000 });
   });
-  const pick = btnEl("Pick on map", "btn small", () => {
+  const pick = btnEl(draft.lat == null ? "Pick on map" : "Change on map", "btn small", () => {
     closePanel();
-    $("notice").textContent = "Zoom in and tap the exact spot of your property. Tap \"My account\" to cancel.";
+    if (map && draft.lat != null) map.setView([draft.lat, draft.lng], Math.max(map.getZoom(), 16));
+    $("notice").textContent = "Zoom in and tap the exact spot of your property. Tap \"Cancel\" to go back.";
     $("notice").hidden = false;
+    $("postBtn").textContent = "Cancel";
     pickMode = ll => {
-      pickMode = null; $("notice").hidden = true;
+      pickMode = null; $("notice").hidden = true; updateFab();
       draft.lat = ll.lat; draft.lng = ll.lng; showDraftMarker(); viewPost();
     };
   });
 
   const msg = el("p", "msg");
-  const send = btnEl("Send for approval", "btn wa", async () => {
+  msg.setAttribute("role", "alert");
+  const sendLabel = editing ? "Save changes" : "Send for approval";
+  const send = btnEl(sendLabel, "btn wa", async () => {
     say(msg, "", "");
     const fail = t => say(msg, "err", t);
     if (!draft.title.trim()) return fail("Enter a title.");
     if (!draft.area.trim()) return fail("Enter the area and city, for example Madhurawada, Visakhapatnam.");
     if (!draft.price.trim()) return fail("Enter the price.");
     if (draft.lat == null) return fail("Set the location of the property on the map.");
-    if (digits(draft.ownerPhone).length < 10) return fail("Enter your 10-digit phone number.");
+    const ph = digits(draft.ownerPhone);
+    if (ph.length < 10 || ph.length > 13) return fail("Enter your 10-digit phone number.");
     if (draft.video.trim() && !youtubeId(draft.video)) return fail("The video link must be a YouTube link.");
-    for (const f of draft.files) {
-      if (!/^image\//.test(f.type)) return fail("Only photos can be uploaded.");
-      if (f.size > 6 * 1024 * 1024) return fail("Each photo must be under 6 MB.");
-    }
-    send.disabled = true; say(msg, "soft", "Sending...");
+    for (const f of draft.files) if (f.size > 25 * 1024 * 1024) return fail("One photo is very large (over 25 MB). Please choose a smaller one.");
+    send.disabled = true;
+    const uploaded = [];
+    let saved = false;
     try {
-      const urls = [];
-      for (const f of draft.files) {
-        const ext = ((f.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 5)) || "jpg";
+      for (let i = 0; i < draft.files.length; i++) {
+        say(msg, "soft", "Uploading photo " + (i + 1) + " of " + draft.files.length + "...");
+        const f = await shrinkPhoto(draft.files[i]);
+        if (f.size > 6 * 1024 * 1024) throw new Error("A photo is too large even after resizing. Please choose a smaller photo.");
+        const ext = ({ "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/heic": "heic", "image/heif": "heif" })[f.type] || "jpg";
         const path = session.user.id + "/" + Date.now() + "-" + Math.random().toString(36).slice(2, 8) + "." + ext;
-        const up = await sb.storage.from("photos").upload(path, f, { contentType: f.type, cacheControl: "31536000" });
+        const up = await sb.storage.from("photos").upload(path, f, { contentType: f.type || "image/jpeg", cacheControl: "31536000" });
         if (up.error) throw up.error;
-        urls.push(sb.storage.from("photos").getPublicUrl(path).data.publicUrl);
+        uploaded.push(sb.storage.from("photos").getPublicUrl(path).data.publicUrl);
       }
-      const ins = await sb.from("listings").insert({
-        owner_id: session.user.id, category: draft.category, deal: draft.deal,
+      say(msg, "soft", "Saving...");
+      const fields = {
+        category: draft.category, deal: draft.deal,
         title: draft.title.trim(), area: draft.area.trim(), lat: draft.lat, lng: draft.lng,
         price: draft.price.trim(), details: draft.details.trim(), description: draft.description.trim(),
-        video: draft.video.trim(), photos: urls, status: "pending"
-      }).select("id").single();
-      if (ins.error) throw ins.error;
-      const con = await sb.from("listing_contacts").insert({ listing_id: ins.data.id, owner_name: draft.ownerName.trim(), owner_phone: draft.ownerPhone.trim() });
-      if (con.error) throw con.error;
-      draft = newDraft(); clearDraftMarker(); viewDone();
+        video: draft.video.trim(), photos: draft.photos.concat(uploaded).slice(0, MAX_PHOTOS), status: "pending"
+      };
+      const contact = { owner_name: draft.ownerName.trim(), owner_phone: draft.ownerPhone.trim() };
+      if (editing) {
+        const up = await sb.from("listings").update(fields).eq("id", draft.id).select("id");
+        if (up.error) throw up.error;
+        if (!up.data || !up.data.length) throw new Error("You can only edit your own listings.");
+        saved = true;
+        const cu = await sb.from("listing_contacts").update(contact).eq("listing_id", draft.id).select("listing_id");
+        if (cu.error) throw cu.error;
+        if (!cu.data || !cu.data.length) {
+          const ci = await sb.from("listing_contacts").insert(Object.assign({ listing_id: draft.id }, contact));
+          if (ci.error) throw ci.error;
+        }
+        removePhotos(draft.removed);
+      } else {
+        const ins = await sb.from("listings").insert(Object.assign({ owner_id: session.user.id }, fields)).select("id").single();
+        if (ins.error) throw ins.error;
+        saved = true;
+        const con = await sb.from("listing_contacts").insert(Object.assign({ listing_id: ins.data.id }, contact));
+        if (con.error) throw con.error;
+      }
+      draft = newDraft(); clearDraftMarker(); reloadListings(); viewDone(editing);
     } catch (e) {
-      send.disabled = false; say(msg, "err", "Could not send: " + (e && e.message ? e.message : "please try again."));
+      if (!saved) removePhotos(uploaded);
+      send.disabled = false;
+      say(msg, "err", "Could not save: " + friendlyAuthError(e && e.message ? e.message : ""));
     }
   });
 
@@ -1183,20 +1595,22 @@ function viewPost() {
   body.append(
     two(fieldOf("Property type", cat), fieldOf("For", deal)),
     fieldOf("Title", bind("title", "input", { maxLength: 80, placeholder: "e.g. 2 BHK flat, east facing" })),
-    two(fieldOf("Area and city", bind("area", "input", { maxLength: 60, placeholder: "Area, city (e.g. Madhurawada, Visakhapatnam)" })), fieldOf("Price", price)),
+    two(fieldOf("Area and city", bind("area", "input", { maxLength: 60, placeholder: "e.g. Madhurawada, Visakhapatnam" })), fieldOf("Price", price)),
     fieldOf("Size and details", bind("details", "input", { maxLength: 140, placeholder: "e.g. 2 BHK · 1,050 sq ft · 2nd floor" })),
     fieldOf("Description", bind("description", "textarea", { maxLength: 600, placeholder: "Anything a visitor should know" })),
     fieldOf("YouTube video link (optional)", bind("video", "input", { type: "url", placeholder: "https://youtu.be/..." })),
-    fieldOf("Photos (optional)", photos), photoNote,
-    two(fieldOf("Your name", bind("ownerName", "input", { maxLength: 60, autocomplete: "name" })), fieldOf("Your phone", bind("ownerPhone", "input", { type: "tel", maxLength: 15, autocomplete: "tel" }))),
-    note, locText
+    el("span", "field-label", "Photos (optional)"), photoBox, addPhotos, photoNote,
+    two(fieldOf("Your name", bind("ownerName", "input", { maxLength: 60, autocomplete: "name" })), fieldOf("Your phone", bind("ownerPhone", "input", { type: "tel", maxLength: 15, autocomplete: "tel", inputMode: "tel" }))),
+    note, el("span", "field-label", "Location on the map"), locText
   );
-  const r = el("div", "row"); r.append(here, pick); body.append(r, msg, send, btnEl("Back", "btn quiet", viewHome));
+  const r = el("div", "row"); r.append(here, pick); body.append(r, msg, send, btnEl(editing ? "Cancel" : "Back", "btn quiet", editing ? viewMine : viewHome));
 }
-function viewDone() {
-  const body = openPanel("Sent for approval");
-  body.append(el("p", "msg ok", "Thank you. " + CONFIG.appName + " will check your listing and it will appear on the map once approved."));
-  body.append(btnEl("Post another property", "btn wa", () => viewPost()), btnEl("My listings", "btn", viewMine));
+function viewDone(edited) {
+  const body = openPanel(edited ? "Changes sent" : "Sent for approval");
+  body.append(el("p", "msg ok", edited
+    ? "Thank you. " + CONFIG.appName + " will check your changes and the listing will be back on the map once approved."
+    : "Thank you. " + CONFIG.appName + " will check your listing and it will appear on the map once approved."));
+  body.append(btnEl("Post another property", "btn wa", startPost), btnEl("My listings", "btn", viewMine));
 }
 
 /* ---- my listings ---- */
@@ -1204,54 +1618,75 @@ async function viewMine() {
   const body = openPanel("My listings");
   const msg = el("p", "msg soft", "Loading...");
   body.append(msg);
-  const { data, error } = await sb.from("listings").select("id,public_id,title,area,category,deal,status,created_at")
+  const { data, error } = await sb.from("listings").select("*")
     .eq("owner_id", session.user.id).order("created_at", { ascending: false });
   if (error) { say(msg, "err", "Could not load your listings."); body.append(btnEl("Back", "btn quiet", viewHome)); return; }
   msg.textContent = data.length ? "" : "You have not posted anything yet.";
+  if (!data.length) body.append(btnEl("Post your first property", "btn wa", startPost));
   data.forEach(r => {
+    if (!CATS[r.category] || !DEALS[r.deal]) return;
     const card = el("div", "item");
-    const top = el("div", "row"); top.append(el("span", "pill " + r.status, STATUS_TEXT[r.status] || r.status), el("span", "pill", r.public_id));
-    card.append(top, el("h3", "", r.title), el("p", "", CATS[r.category].one + " · " + DEALS[r.deal].label + " · " + r.area));
+    const top = el("div", "row"); top.append(el("span", "pill " + r.status, STATUS_TEXT[r.status] || r.status), el("span", "pill", r.public_id || ""));
+    const cover = (r.photos || []).find(u => /^https:\/\//.test(u));
+    const head = el("div", "item-head");
+    if (cover) { const im = el("img", "item-cover"); im.src = cover; im.alt = ""; im.loading = "lazy"; head.append(im); }
+    const txt = el("div"); txt.append(el("h3", "", r.title), el("p", "", CATS[r.category].one + " · " + DEALS[r.deal].label + " · " + r.area));
+    head.append(txt);
+    card.append(top, head);
+    if (r.status === "rejected" && r.review_note) card.append(el("p", "note", "Reason: " + r.review_note + " Edit the listing to send it again."));
+    else if (r.status === "rejected") card.append(el("p", "note", "Edit the listing to fix it and send it again."));
+    const acts = el("div", "row");
+    acts.append(btnEl("Edit", "btn small", () => editListing(r.id)));
+    if (r.status === "active") acts.append(btnEl("View on map", "btn small", () => { closePanel(); focusListing(r.public_id); }));
     let armed = false;
     const del = btnEl("Delete", "btn small danger", async () => {
       if (!armed) { armed = true; del.textContent = "Tap again to delete"; return; }
       del.disabled = true;
       const res = await sb.from("listings").delete().eq("id", r.id);
       if (res.error) { del.disabled = false; toast("Could not delete. Try again."); return; }
+      removePhotos(r.photos);
       toast("Listing deleted."); reloadListings(); viewMine();
     });
-    card.append(del); body.append(card);
+    acts.append(del);
+    card.append(acts); body.append(card);
   });
   body.append(btnEl("Back", "btn quiet", viewHome));
 }
 
 /* ---- approval (admin only) ---- */
+async function setListingStatus(id, status, note) {
+  let res = await sb.from("listings").update({ status, review_note: note || null }).eq("id", id);
+  // Databases set up before review notes existed: save the status alone.
+  if (res.error && /review_note/.test(res.error.message || "")) res = await sb.from("listings").update({ status }).eq("id", id);
+  return res;
+}
 async function viewAdmin(tab) {
   const body = openPanel("Review listings");
   const tabs = el("div", "tabs");
-  [["pending", "Waiting"], ["active", "Live"]].forEach(([k, label]) => {
-    const b = btnEl(label, "chip", () => viewAdmin(k));
-    b.style.color = "var(--ink)"; b.style.borderColor = "var(--line)";
+  [["pending", "Waiting"], ["active", "Live"], ["rejected", "Not approved"]].forEach(([k, label]) => {
+    const b = btnEl(label, "tab", () => viewAdmin(k));
     b.setAttribute("aria-pressed", String(tab === k));
-    if (tab === k) { b.style.background = "var(--harbour)"; b.style.color = "var(--on-dark)"; }
     tabs.append(b);
   });
   body.append(tabs);
   const msg = el("p", "msg soft", "Loading...");
   body.append(msg);
   const { data, error } = await sb.from("listings").select("*, listing_contacts(owner_name, owner_phone)")
-    .eq("status", tab).order("created_at", { ascending: tab !== "pending" ? false : true });
+    .eq("status", tab).order("created_at", { ascending: tab === "pending" });
   if (error) { say(msg, "err", "Could not load. Are you signed in as the admin?"); return; }
-  msg.textContent = data.length ? "" : (tab === "pending" ? "Nothing is waiting for approval." : "No live listings yet.");
+  msg.textContent = data.length ? "" : ({ pending: "Nothing is waiting for approval.", active: "No live listings yet.", rejected: "No rejected listings." })[tab];
   data.forEach(r => {
+    if (!CATS[r.category] || !DEALS[r.deal]) return;
     const c = Array.isArray(r.listing_contacts) ? r.listing_contacts[0] : r.listing_contacts;
     const card = el("div", "item");
-    const top = el("div", "row"); top.append(el("span", "badge " + r.deal, CATS[r.category].one + " · " + DEALS[r.deal].label), el("span", "pill", r.public_id));
+    const top = el("div", "row"); top.append(el("span", "badge " + r.deal, CATS[r.category].one + " · " + DEALS[r.deal].label), el("span", "pill", r.public_id || ""));
+    if (r.created_at) top.append(el("span", "when", new Date(r.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })));
     card.append(top, el("h3", "", r.title), el("p", "", r.area + " · " + (r.price || "no price")));
     if (r.details) card.append(el("p", "", r.details));
     if (r.description) card.append(el("p", "", r.description));
     const own = el("p", "", "Owner: " + ((c && c.owner_name) || "no name") + " · " + ((c && c.owner_phone) || "no phone"));
     own.style.fontWeight = "600"; card.append(own);
+    if (r.review_note) card.append(el("p", "note", "Note to owner: " + r.review_note));
     const links = el("div", "row");
     const map1 = el("a", "video-link", "See location on Google Maps"); map1.href = "https://www.google.com/maps?q=" + r.lat + "," + r.lng; map1.target = "_blank"; map1.rel = "noopener";
     links.append(map1);
@@ -1259,16 +1694,35 @@ async function viewAdmin(tab) {
     if (vid) { const v = el("a", "video-link", "Watch video"); v.href = "https://www.youtube.com/watch?v=" + vid; v.target = "_blank"; v.rel = "noopener"; links.append(v); }
     card.append(links);
     const ph = (r.photos || []).filter(u => /^https:\/\//.test(u));
-    if (ph.length) { const th = el("div", "thumbs"); ph.forEach(u => { const im = el("img"); im.src = u; im.alt = "Photo"; im.loading = "lazy"; th.append(im); }); card.append(th); }
-    const setStatus = async status => {
-      const res = await sb.from("listings").update({ status }).eq("id", r.id);
-      if (res.error) { toast("Could not update. Try again."); return; }
-      toast(status === "active" ? "Approved. It is now on the map." : "Removed."); reloadListings(); viewAdmin(tab);
-    };
+    if (ph.length) {
+      const th = el("div", "thumbs");
+      ph.forEach((u, i) => { const im = el("img"); im.src = u; im.alt = "Photo " + (i + 1); im.loading = "lazy"; im.addEventListener("click", () => openViewer(ph, i)); th.append(im); });
+      card.append(th);
+    }
+    const done = text => { toast(text); reloadListings(); viewAdmin(tab); };
     const acts = el("div", "row");
-    if (tab === "pending") acts.append(btnEl("Approve", "btn small wa", () => setStatus("active")), btnEl("Reject", "btn small danger", () => setStatus("rejected")));
-    else acts.append(btnEl("Remove from map", "btn small danger", () => setStatus("rejected")));
-    card.append(acts); body.append(card);
+    const reasonBox = el("div", "stack");
+    reasonBox.hidden = true;
+    const reason = inp("textarea", { maxLength: 300, placeholder: "e.g. Please add a clear photo of the front of the house." });
+    reasonBox.append(fieldOf("Reason (the owner sees this)", reason));
+    const askReason = (label, status, okText) => btnEl(label, "btn small danger", async ev => {
+      const b = ev.currentTarget;
+      if (reasonBox.hidden) { reasonBox.hidden = false; b.textContent = "Confirm: " + label.toLowerCase(); reason.focus(); return; }
+      b.disabled = true;
+      const res = await setListingStatus(r.id, status, reason.value.trim());
+      if (res.error) { b.disabled = false; toast("Could not update. Try again."); return; }
+      done(okText);
+    });
+    const approve = btnEl("Approve", "btn small wa", async () => {
+      approve.disabled = true;
+      const res = await setListingStatus(r.id, "active", null);
+      if (res.error) { approve.disabled = false; toast("Could not update. Try again."); return; }
+      done("Approved. It is now on the map.");
+    });
+    if (tab === "pending") acts.append(approve, askReason("Reject", "rejected", "Rejected. The owner can see your reason."));
+    else if (tab === "active") acts.append(btnEl("View on map", "btn small", () => { closePanel(); focusListing(r.public_id); }), askReason("Remove from map", "rejected", "Removed from the map."));
+    else acts.append(approve);
+    card.append(reasonBox, acts); body.append(card);
   });
   body.append(btnEl("Back", "btn quiet", viewHome));
 }
@@ -1292,14 +1746,18 @@ async function loadListings(quiet) {
 async function start() {
   initSupabase();
   $("postBtn").addEventListener("click", () => {
-    if (pickMode) { pickMode = null; $("notice").hidden = true; viewPost(); return; }
+    if (pickMode) { pickMode = null; $("notice").hidden = true; updateFab(); viewPost(); return; }
     session ? viewHome() : viewAuth("in");
   });
   $("panelClose").addEventListener("click", closePanel);
   $("panel").addEventListener("click", e => { if (e.target === $("panel")) closePanel(); });
+  $("brandBtn").addEventListener("click", viewAbout);
+  $("listBtn").addEventListener("click", viewList);
+  initViewer();
   initMap();
   renderChips();
   listings = await loadListings();
+  $("loading").hidden = true;
   renderChips();
   renderPins();
   if (openFromHash()) {
@@ -1313,7 +1771,16 @@ async function start() {
     const fresh = await loadListings(true);
     if (fresh.length || sb) { listings = fresh; renderChips(); renderPins(); }
   }, CONFIG.refreshSeconds * 1000);
-  document.addEventListener("keydown", e => { if (e.key === "Escape") { closeSheet(); closePanel(); } });
+  document.addEventListener("keydown", e => {
+    if (!$("viewer").hidden) {
+      if (e.key === "ArrowLeft") stepViewer(-1);
+      else if (e.key === "ArrowRight") stepViewer(1);
+      else if (e.key === "Escape") closeViewer();
+      return;
+    }
+    if (e.key !== "Escape") return;
+    if (!$("panel").hidden) closePanel(); else closeSheet();
+  });
 }
 if (typeof document !== "undefined" && document.getElementById("map")) start();
 </script>

@@ -456,6 +456,61 @@ button.brand { border: 0; background: none; padding: 0; margin: 0; color: inheri
 .badge.new { background: var(--marigold); color: var(--marigold-ink); }
 .item .note.warn { background: #fde3e4; color: #7d1b1f; font-weight: 600; }
 
+/* ---------- Assistant chat ---------- */
+.chat-fab {
+  position: absolute; z-index: 1100;
+  right: max(12px, env(safe-area-inset-right, 0px));
+  bottom: calc(22px + env(safe-area-inset-bottom, 0px));
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 12px 18px 12px 14px; min-height: 50px; border: 0; border-radius: 999px;
+  background: var(--harbour); color: #fff; font-weight: 700; box-shadow: var(--shadow-1);
+}
+.chat-fab svg { width: 22px; height: 22px; fill: none; stroke: var(--marigold); stroke-width: 2; stroke-linejoin: round; }
+.chat-fab::after { content: ""; position: absolute; top: 8px; right: 10px; width: 9px; height: 9px; border-radius: 50%; background: #2fd16f; border: 2px solid var(--harbour); }
+.stage:has(.chat-fab:not([hidden])) .tools { bottom: calc(86px + env(safe-area-inset-bottom, 0px)); }
+@media (max-width: 819px) { .stage:has(.sheet:not([hidden])) .chat-fab { display: none; } }
+.chat {
+  position: fixed; z-index: 1500; inset: 0;
+  display: flex; flex-direction: column; background: var(--sheet);
+}
+@media (min-width: 700px) {
+  .chat { inset: auto 16px 16px auto; width: 380px; height: min(600px, calc(100% - 32px)); border-radius: 20px; overflow: hidden; box-shadow: 0 12px 40px rgba(6,38,42,.4); }
+}
+.chat-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: calc(12px + env(safe-area-inset-top, 0px)) 14px 12px; background: linear-gradient(180deg, #0f464d, var(--harbour)); color: #fff;
+}
+@media (min-width: 700px) { .chat-head { padding-top: 12px; } }
+.chat-who { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.chat-who strong { display: block; font: 600 15px/1.2 var(--font-display); }
+.chat-who small { display: flex; align-items: center; gap: 6px; font-size: 12px; opacity: .8; }
+.live { width: 8px; height: 8px; border-radius: 50%; background: #2fd16f; }
+.chat-av { width: 38px; height: 38px; border-radius: 50%; background: rgba(255,255,255,.12); display: grid; place-items: center; flex: none; }
+.chat-av svg { width: 22px; height: 22px; fill: none; stroke: var(--marigold); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.chat-head .close { background: rgba(255,255,255,.14); color: #fff; }
+.chat-log { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: 16px 14px; display: flex; flex-direction: column; gap: 8px; }
+.bubble { max-width: 85%; padding: 10px 13px; border-radius: 16px; font-size: 14.5px; line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; }
+.bubble.them { align-self: flex-start; background: #fff; border: 1px solid var(--line); border-bottom-left-radius: 6px; }
+.bubble.me { align-self: flex-end; background: var(--harbour); color: #fff; border-bottom-right-radius: 6px; }
+.bubble.err { border-color: #f0c2c4; }
+.bubble .btn.small { margin-top: 8px; display: flex; }
+.idlink { border: 0; padding: 0 2px; background: none; color: var(--harbour); font: inherit; font-weight: 700; text-decoration: underline; text-underline-offset: 2px; }
+.typing { display: inline-flex; gap: 4px; padding: 14px 16px; }
+.typing span { width: 7px; height: 7px; border-radius: 50%; background: #9db0b0; animation: blink 1.2s infinite ease-in-out; }
+.typing span:nth-child(2) { animation-delay: .15s; } .typing span:nth-child(3) { animation-delay: .3s; }
+@keyframes blink { 0%, 80%, 100% { opacity: .3; transform: translateY(0); } 40% { opacity: 1; transform: translateY(-3px); } }
+@media (prefers-reduced-motion: reduce) { .typing span { animation: none; opacity: .6; } }
+.chat-quick { display: flex; gap: 6px; overflow-x: auto; padding: 0 14px 10px; scrollbar-width: none; }
+.chat-quick::-webkit-scrollbar { display: none; }
+.qr { flex: none; padding: 8px 12px; border-radius: 999px; border: 1px solid var(--harbour); background: #fff; color: var(--harbour); font-size: 13px; font-weight: 600; white-space: nowrap; }
+.chat-form { display: flex; gap: 8px; padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--line); background: #fff; }
+.chat-form input { flex: 1; min-width: 0; padding: 12px 14px; border: 1px solid var(--line); border-radius: 999px; font: inherit; font-size: 16px; color: var(--ink); background: var(--sheet); }
+.chat-form input:focus { outline: none; border-color: var(--harbour); box-shadow: 0 0 0 3px rgba(12,59,65,.15); }
+.chat-form button { flex: none; width: 46px; height: 46px; border: 0; border-radius: 50%; background: var(--marigold); display: grid; place-items: center; }
+.chat-form button svg { width: 20px; height: 20px; fill: var(--marigold-ink); }
+.chat-form button:disabled { opacity: .5; }
+.linkish { border: 0; cursor: pointer; }
+
 /* ---------- Account panel extras ---------- */
 .stack { display: flex; flex-direction: column; gap: 12px; }
 .field-label { font-size: 13px; color: var(--ink-soft); margin-bottom: -6px; }
@@ -555,6 +610,9 @@ button.brand { border: 0; background: none; padding: 0; margin: 0; color: inheri
     </button>
   </div>
   <button class="fab" id="postBtn" type="button" hidden>+ Post property</button>
+  <button class="chat-fab" id="chatBtn" type="button" hidden aria-label="Chat with us, replies instantly">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20l1.3-3.9A8 8 0 1 1 8 19.1z"/></svg><span>Ask us</span>
+  </button>
   <section class="sheet" id="sheet" hidden aria-live="polite"></section>
   <div class="toast" id="toast" hidden role="status"></div>
 </main>
@@ -565,6 +623,22 @@ button.brand { border: 0; background: none; padding: 0; margin: 0; color: inheri
     <div id="panelBody" style="display:flex;flex-direction:column;gap:12px"></div>
   </div>
 </div>
+
+<section class="chat" id="chat" hidden role="dialog" aria-modal="false" aria-labelledby="chatTitle">
+  <header class="chat-head">
+    <div class="chat-who">
+      <span class="chat-av" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M5 15.5 16 6.5l11 9M8.5 13v9.5h15V13M3.5 26h25"/></svg></span>
+      <div><strong id="chatTitle"></strong><small><span class="live" aria-hidden="true"></span>Replies instantly</small></div>
+    </div>
+    <button class="close" id="chatClose" type="button" aria-label="Close chat">&times;</button>
+  </header>
+  <div class="chat-log" id="chatLog" aria-live="polite"></div>
+  <div class="chat-quick" id="chatQuick"></div>
+  <form class="chat-form" id="chatForm" autocomplete="off">
+    <input id="chatInput" type="text" maxlength="1000" placeholder="Type your question" aria-label="Your message" enterkeyhint="send">
+    <button type="submit" id="chatSend" aria-label="Send"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12l16-8-6 16-2.5-6.5z"/></svg></button>
+  </form>
+</section>
 
 <div class="viewer" id="viewer" hidden role="dialog" aria-modal="true" aria-label="Photos">
   <img id="viewerImg" alt="">
@@ -605,6 +679,12 @@ const CONFIG = {
   // Everything else (sale and BnB) shows only your WhatsApp and Call buttons, so the
   // owner's number stays private and enquiries come through you. Written as "category-deal".
   directContact: ["house-rent", "house-lease", "land-lease"],
+
+  // AI assistant (see supabase/functions/assistant). Answers visitors instantly and saves
+  // their enquiries for you. Set to false to hide the chat button.
+  assistant: true,
+  // Leave "" to use your Supabase project's "assistant" function.
+  assistantUrl: "",
 
   // With a Google Sheet connected, new listings appear on open maps after this many seconds.
   refreshSeconds: 60,
@@ -970,9 +1050,15 @@ function renderPins() {
   });
 }
 /* Highlight one pin without rebuilding the others. */
+let areaCircle = null;
 function setSelected(id) {
   const prev = selectedId;
   selectedId = id;
+  if (areaCircle) { areaCircle.remove(); areaCircle = null; }
+  const sel = id != null && listings.find(x => x.id === id);
+  // Sale and BnB pins are shown about 300 m from the real spot, so mark the general area.
+  if (map && sel && !isDirect(sel) && !sel.sample)
+    areaCircle = L.circle([sel.lat, sel.lng], { radius: 400, color: "#f4b740", weight: 2, dashArray: "6 6", fillColor: "#f4b740", fillOpacity: .12, interactive: false }).addTo(map);
   [prev, id].forEach(k => {
     if (k == null) return;
     const m = markers.get(k), l = listings.find(x => x.id === k);
@@ -1063,7 +1149,7 @@ function openListing(id) {
   if (!l) return;
   if (category !== l.category || (dealFilter !== "all" && dealFilter !== l.deal)) {
     category = l.category; dealFilter = "all"; renderChips();
-    selectedId = id; renderPins();
+    selectedId = null; renderPins(); setSelected(id);
   } else setSelected(id);
   if (map) map.panTo([l.lat, l.lng]);
   try { history.replaceState(null, "", "#" + encodeURIComponent(id)); } catch (e) {}
@@ -1080,7 +1166,7 @@ function openListing(id) {
   if (l.sample) badges.append(el("span", "badge sample", "Sample listing"));
   const age = ageText(l.listed);
   hl.append(badges, el("h2", "", shownText(l, l.title)), el("p", "where", shownText(l, l.area)));
-  if (age) hl.append(el("p", "age", age));
+  if (age || (!isDirect(l) && !l.sample)) hl.append(el("p", "age", [age, !isDirect(l) && !l.sample ? "Approximate location" : ""].filter(Boolean).join(" · ")));
   const x = el("button", "close", "×");
   x.type = "button"; x.setAttribute("aria-label", "Close");
   x.addEventListener("click", closeSheet);
@@ -1166,6 +1252,12 @@ function openListing(id) {
     btns.append(
       waButton("WhatsApp", CONFIG.whatsappNumber, message),
       callButton("Call", CONFIG.callNumber || CONFIG.whatsappNumber));
+  }
+  if (chatReady()) {
+    const ask = el("button", "btn"); ask.type = "button";
+    ask.append(icon("chat"), document.createTextNode("Chat now"));
+    ask.addEventListener("click", () => openChat(l));
+    btns.append(ask);
   }
   if (showOwner) {
     const dir = el("a", "btn");
@@ -1293,6 +1385,112 @@ function initViewer() {
   });
 }
 
+/* ---- AI assistant chat ---- */
+const CHAT_KEY = "landsnlords.chat";
+let chatState = { listingId: null, msgs: [] };
+try { const c = JSON.parse(sessionStorage.getItem(CHAT_KEY) || "null"); if (c && Array.isArray(c.msgs)) chatState = c; } catch (e) {}
+let chatBusy = false, chatFrom = null;
+const chatUrl = () => CONFIG.assistantUrl || (CONFIG.supabaseUrl ? CONFIG.supabaseUrl.replace(/\/$/, "") + "/functions/v1/assistant" : "");
+const chatReady = () => !!(CONFIG.assistant && chatUrl());
+function saveChat() { try { sessionStorage.setItem(CHAT_KEY, JSON.stringify({ listingId: chatState.listingId, msgs: chatState.msgs.slice(-40) })); } catch (e) {} }
+const ID_RE = /\b(?:H[RSLB]|L[SL])-\d{3,6}\b/g;
+function chatBubble(m) {
+  const b = el("div", "bubble " + (m.role === "user" ? "me" : "them") + (m.error ? " err" : ""));
+  // Listing IDs in replies become links that open the listing.
+  let last = 0; const t = m.content;
+  t.replace(ID_RE, (id, at) => {
+    b.append(document.createTextNode(t.slice(last, at)));
+    if (listings.some(x => x.id === id)) {
+      const a = el("button", "idlink", id); a.type = "button";
+      a.addEventListener("click", () => { if (window.matchMedia("(max-width: 699px)").matches) closeChat(); focusListing(id); });
+      b.append(a);
+    } else b.append(document.createTextNode(id));
+    last = at + id.length; return id;
+  });
+  b.append(document.createTextNode(t.slice(last)));
+  if (m.error && digits(CONFIG.whatsappNumber)) {
+    const wa = waButton("WhatsApp us", CONFIG.whatsappNumber, () => "Hi " + CONFIG.appName + ", " + (chatState.listingId ? "about " + chatState.listingId + ": " : ""));
+    wa.classList.add("small"); b.append(wa);
+  }
+  return b;
+}
+function quickReplies() {
+  const l = chatState.listingId && listings.find(x => x.id === chatState.listingId);
+  if (!l) return ["Houses for rent near me", "Plots for sale", "2 BHK under ₹20,000"];
+  if (l.deal === "bnb") return ["Is it free on my dates?", "What is included?", "Book this stay"];
+  if (l.deal === "sale") return ["Is it still available?", "Are the documents clear?", "Book a site visit"];
+  return ["Is it still available?", "Owner's contact", "Similar ones nearby"];
+}
+function renderChat() {
+  $("chatTitle").textContent = CONFIG.appName + " assistant";
+  const log = $("chatLog"); log.textContent = "";
+  chatState.msgs.forEach(m => log.append(chatBubble(m)));
+  if (chatBusy) { const t = el("div", "bubble them typing"); t.setAttribute("aria-label", "Typing"); t.append(el("span"), el("span"), el("span")); log.append(t); }
+  const q = $("chatQuick"); q.textContent = "";
+  if (!chatBusy && chatState.msgs.filter(m => m.role === "user").length < 2)
+    quickReplies().forEach(text => q.append(btnEl(text, "qr", () => sendChat(text))));
+  q.hidden = !q.childNodes.length;
+  $("chatSend").disabled = chatBusy;
+  log.scrollTop = log.scrollHeight;
+}
+function openChat(listing) {
+  if (!chatReady()) return;
+  if (!chatState.msgs.length) {
+    chatState.msgs.push({ role: "assistant", content: "Hi! I'm the " + CONFIG.appName + " assistant. Ask me about any property, price or site visit." });
+  }
+  if (listing && listing.id !== chatState.listingId) {
+    chatState.listingId = listing.id;
+    chatState.msgs.push({ role: "assistant", content: "You're looking at " + shownText(listing, listing.title) + " in " + shownText(listing, listing.area) + " (" + listing.id + "). What would you like to know?" });
+  }
+  saveChat();
+  chatFrom = document.activeElement;
+  $("chat").hidden = false; $("chatBtn").hidden = true;
+  renderChat();
+  if (!window.matchMedia("(max-width: 699px)").matches || !listing) setTimeout(() => $("chatInput").focus(), 50);
+}
+function closeChat() {
+  if ($("chat").hidden) return false;
+  $("chat").hidden = true; $("chatBtn").hidden = !chatReady();
+  if (chatFrom && chatFrom.focus && document.contains(chatFrom)) chatFrom.focus();
+  return true;
+}
+async function sendChat(text) {
+  text = String(text || "").trim().slice(0, 1000);
+  if (!text || chatBusy) return;
+  chatState.msgs.push({ role: "user", content: text });
+  chatBusy = true; saveChat(); renderChat();
+  const body = {
+    messages: chatState.msgs.filter(m => !m.error).map(m => ({ role: m.role, content: m.content })).slice(-24),
+    listing_id: chatState.listingId || undefined,
+    center: map ? [map.getCenter().lat, map.getCenter().lng] : undefined
+  };
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 60000);
+  let reply = null;
+  try {
+    const res = await fetch(chatUrl(), {
+      method: "POST", signal: ctrl.signal,
+      headers: { "Content-Type": "application/json", apikey: CONFIG.supabaseKey, Authorization: "Bearer " + CONFIG.supabaseKey },
+      body: JSON.stringify(body)
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && data.reply) reply = String(data.reply);
+  } catch (e) { /* shown below */ }
+  clearTimeout(timer);
+  chatBusy = false;
+  chatState.msgs.push(reply
+    ? { role: "assistant", content: reply }
+    : { role: "assistant", error: true, content: "Sorry, I can't answer right now. Please WhatsApp or call us." });
+  saveChat(); renderChat();
+}
+function initChat() {
+  if (!chatReady()) return;
+  $("chatBtn").hidden = false;
+  $("chatBtn").addEventListener("click", () => openChat(null));
+  $("chatClose").addEventListener("click", closeChat);
+  $("chatForm").addEventListener("submit", e => { e.preventDefault(); const v = $("chatInput").value; $("chatInput").value = ""; sendChat(v); });
+}
+
 /* ---- About, how it works, privacy ---- */
 function viewAbout() {
   const n = CONFIG.appName;
@@ -1302,11 +1500,13 @@ function viewAbout() {
   sec("How it works",
     "Rent and lease: call or WhatsApp the owner directly. No fee for tenants or owners.",
     "Houses and plots for sale, and BnB stays: WhatsApp or call " + n + ". We arrange the site visit, document check and registration.",
+    "Questions any time: tap \"Ask us\" and our assistant replies instantly.",
     "Owners: posting is free. Every listing is checked by " + n + " before it appears on the map.");
   sec("Privacy",
     "When you post a property we store your email address, the listing details and photos, and your name and phone number.",
     "Your phone number is shown to visitors only for rent and lease listings. For sales and stays it is seen only by " + n + ".",
     "Listings you save with the heart are kept on your device only.",
+    "The chat is answered by an AI assistant (Claude, made by Anthropic), which sees your messages and the public listing details. If you leave your name and number in the chat, we save them to call you back. Please don't share bank or ID details in the chat.",
     "The app asks for your location only to centre the map near you. It is not saved. Place searches are sent to OpenStreetMap services to find the place.",
     "You can edit or delete your listings at any time from My listings. To delete your account, contact us.");
   sec("Please note", "Listing details are provided by owners. Always check the documents and see the property in person before you pay anything.");
@@ -1343,8 +1543,20 @@ async function refreshAdmin() {
 }
 function updateFab() { $("postBtn").textContent = session ? "My account" : "+ Post property"; }
 
+/* Columns visitors may read. The real location of sale and BnB listings is in
+   hidden columns; owners and admins get it through exact_locations(). */
+const LISTING_COLS = "id,public_id,owner_id,category,deal,title,area,lat,lng,price,details,description,video,photos,status,review_note,created_at";
+async function exactLocations(ids) {
+  const out = new Map();
+  if (!sb || !ids.length) return out;
+  try {
+    const { data } = await sb.rpc("exact_locations", { ids });
+    (data || []).forEach(r => out.set(r.id, [r.lat, r.lng]));
+  } catch (e) { /* older database: fall back to the map pin */ }
+  return out;
+}
 async function loadFromSupabase() {
-  const a = await sb.from("listings").select("*").eq("status", "active");
+  const a = await sb.from("listings").select(LISTING_COLS).eq("status", "active");
   if (a.error) throw a.error;
   const rows = (a.data || []).filter(r => CATS[r.category] && CATS[r.category].deals.includes(r.deal) && isFinite(r.lat) && isFinite(r.lng));
   // Ask only for the phone numbers visitors are meant to see. The database rules
@@ -1483,9 +1695,12 @@ function viewHome() {
   body.append(btnEl("My listings", "btn", viewMine));
   if (isAdmin) {
     const b = btnEl("Review listings", "btn", () => viewAdmin("pending"));
-    body.append(b);
+    const e = btnEl("Enquiries", "btn", () => viewEnquiries("new"));
+    body.append(b, e);
     sb.from("listings").select("id", { count: "exact", head: true }).eq("status", "pending")
       .then(({ count }) => { if (count) b.textContent = "Review listings (" + count + " waiting)"; });
+    sb.from("enquiries").select("id", { count: "exact", head: true }).eq("status", "new")
+      .then(({ count }) => { if (count) e.textContent = "Enquiries (" + count + " new)"; });
   }
   body.append(btnEl("About " + CONFIG.appName, "btn quiet", viewAbout));
   body.append(btnEl("Sign out", "btn quiet", async () => {
@@ -1544,7 +1759,7 @@ async function editListing(uid) {
   const body = openPanel("Edit listing");
   body.append(el("p", "msg soft", "Loading..."));
   const [a, b] = await Promise.all([
-    sb.from("listings").select("*").eq("id", uid).single(),
+    sb.from("listings").select(LISTING_COLS).eq("id", uid).single(),
     sb.from("listing_contacts").select("owner_name,owner_phone").eq("listing_id", uid).maybeSingle()
   ]);
   if (a.error || !a.data) {
@@ -1553,12 +1768,13 @@ async function editListing(uid) {
     return;
   }
   const r = a.data, c = b.data || {};
+  const exact = (await exactLocations([r.id])).get(r.id) || [r.lat, r.lng];
   draft = Object.assign(newDraft(), {
     id: r.id, publicId: r.public_id, wasStatus: r.status,
     category: r.category, deal: r.deal, title: r.title || "", area: r.area || "", price: r.price || "",
     details: r.details || "", description: r.description || "", video: r.video || "",
     ownerName: c.owner_name || "", ownerPhone: c.owner_phone || "",
-    lat: r.lat, lng: r.lng, photos: (r.photos || []).slice()
+    lat: exact[0], lng: exact[1], photos: (r.photos || []).slice()
   });
   clearDraftMarker(); showDraftMarker();
   viewPost();
@@ -1739,7 +1955,7 @@ async function viewMine() {
   const body = openPanel("My listings");
   const msg = el("p", "msg soft", "Loading...");
   body.append(msg);
-  const { data, error } = await sb.from("listings").select("*")
+  const { data, error } = await sb.from("listings").select(LISTING_COLS)
     .eq("owner_id", session.user.id).order("created_at", { ascending: false });
   if (error) { say(msg, "err", "Could not load your listings."); body.append(btnEl("Back", "btn quiet", viewHome)); return; }
   msg.textContent = data.length ? "" : "You have not posted anything yet.";
@@ -1774,6 +1990,45 @@ async function viewMine() {
   body.append(btnEl("Back", "btn quiet", viewHome));
 }
 
+/* ---- enquiries saved by the assistant (admin only) ---- */
+async function viewEnquiries(tab) {
+  const body = openPanel("Enquiries");
+  const tabs = el("div", "tabs");
+  [["new", "New"], ["handled", "Handled"]].forEach(([k, label]) => {
+    const t = btnEl(label, "tab", () => viewEnquiries(k)); t.setAttribute("aria-pressed", String(tab === k)); tabs.append(t);
+  });
+  body.append(tabs);
+  const msg = el("p", "msg soft", "Loading...");
+  body.append(msg);
+  const { data, error } = await sb.from("enquiries").select("*").eq("status", tab).order("created_at", { ascending: false }).limit(100);
+  if (error) { say(msg, "err", "Could not load enquiries. Run the latest supabase/schema.sql first."); body.append(btnEl("Back", "btn quiet", viewHome)); return; }
+  msg.textContent = data.length ? "" : (tab === "new" ? "No new enquiries. The assistant saves them here when visitors leave their number." : "Nothing here yet.");
+  data.forEach(q => {
+    const card = el("div", "item");
+    const top = el("div", "row");
+    if (q.listing_id) {
+      const a = btnEl(q.listing_id, "pill linkish", () => { closePanel(); focusListing(q.listing_id); });
+      top.append(a);
+    }
+    top.append(el("span", "when", new Date(q.created_at).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })));
+    card.append(top, el("h3", "", q.name + " · " + q.phone));
+    if (q.message) card.append(el("p", "", q.message));
+    if (q.preferred_time) card.append(el("p", "msg soft", "Best time: " + q.preferred_time));
+    const acts = el("div", "row");
+    const wa = waButton("WhatsApp", q.phone, () => "Hi " + q.name + ", this is " + CONFIG.appName + (q.listing_id ? " about " + q.listing_id : "") + ". ");
+    const call = callButton("Call", q.phone);
+    wa.classList.add("small"); call.classList.add("small");
+    acts.append(wa, call);
+    acts.append(btnEl(tab === "new" ? "Mark handled" : "Move to new", "btn small", async () => {
+      const res = await sb.from("enquiries").update({ status: tab === "new" ? "handled" : "new" }).eq("id", q.id);
+      if (res.error) { toast("Could not update. Try again."); return; }
+      viewEnquiries(tab);
+    }));
+    card.append(acts); body.append(card);
+  });
+  body.append(btnEl("Back", "btn quiet", viewHome));
+}
+
 /* ---- approval (admin only) ---- */
 async function setListingStatus(id, status, note) {
   let res = await sb.from("listings").update({ status, review_note: note || null }).eq("id", id);
@@ -1792,9 +2047,10 @@ async function viewAdmin(tab) {
   body.append(tabs);
   const msg = el("p", "msg soft", "Loading...");
   body.append(msg);
-  const { data, error } = await sb.from("listings").select("*, listing_contacts(owner_name, owner_phone)")
+  const { data, error } = await sb.from("listings").select(LISTING_COLS + ",listing_contacts(owner_name,owner_phone)")
     .eq("status", tab).order("created_at", { ascending: tab === "pending" });
   if (error) { say(msg, "err", "Could not load. Are you signed in as the admin?"); return; }
+  const exact = await exactLocations(data.map(r => r.id));
   msg.textContent = data.length ? "" : ({ pending: "Nothing is waiting for approval.", active: "No live listings yet.", rejected: "No rejected listings." })[tab];
   data.forEach(r => {
     if (!CATS[r.category] || !DEALS[r.deal]) return;
@@ -1811,7 +2067,7 @@ async function viewAdmin(tab) {
     if (!isDirect(r) && [r.title, r.area, r.details, r.description].some(t => findContacts(t).length))
       card.append(el("p", "note warn", "Warning: the listing text contains a phone number, email or link. Visitors will see it hidden."));
     const links = el("div", "row");
-    const map1 = el("a", "video-link", "See location on Google Maps"); map1.href = "https://www.google.com/maps?q=" + r.lat + "," + r.lng; map1.target = "_blank"; map1.rel = "noopener";
+    const map1 = el("a", "video-link", "See location on Google Maps"); const spot = exact.get(r.id) || [r.lat, r.lng]; map1.href = "https://www.google.com/maps?q=" + spot[0] + "," + spot[1]; map1.target = "_blank"; map1.rel = "noopener";
     links.append(map1);
     const vid = youtubeId(r.video);
     if (vid) { const v = el("a", "video-link", "Watch video"); v.href = "https://www.youtube.com/watch?v=" + vid; v.target = "_blank"; v.rel = "noopener"; links.append(v); }
@@ -1877,6 +2133,7 @@ async function start() {
   $("brandBtn").addEventListener("click", viewAbout);
   $("listBtn").addEventListener("click", viewList);
   initViewer();
+  initChat();
   initMap();
   renderChips();
   listings = await loadListings();
@@ -1902,7 +2159,7 @@ async function start() {
       return;
     }
     if (e.key !== "Escape") return;
-    if (!$("panel").hidden) closePanel(); else closeSheet();
+    if (!$("panel").hidden) closePanel(); else if (!closeChat()) closeSheet();
   });
 }
 if (typeof document !== "undefined" && document.getElementById("map")) start();

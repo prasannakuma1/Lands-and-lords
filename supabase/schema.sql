@@ -15,8 +15,13 @@
 --     and to admins; those enquiries come to you.
 --   * Makes sure owners cannot approve their own listings: every listing
 --     an owner creates or edits goes to "pending" until an admin approves.
+--   * Protects locations: for sale and BnB listings the map pin is moved
+--     200-350 m from the real spot. The real spot is kept in hidden columns
+--     that only the owner and admins can read.
 --   * Sets up the public "photos" storage bucket; owners can upload only
 --     into their own folder.
+--   * Creates the "enquiries" table where the AI assistant saves buyers'
+--     and guests' names and numbers for you to call back.
 --
 -- If you change "directContact" in index.html, change is_public_contact()
 -- below to match.
@@ -55,6 +60,9 @@ alter table public.listings add column if not exists review_note text;
 alter table public.listings add column if not exists updated_at timestamptz not null default now();
 alter table public.listings add column if not exists photos text[] not null default '{}';
 alter table public.listings add column if not exists video text;
+-- Real location of sale and BnB listings (lat/lng is the public, shifted pin).
+alter table public.listings add column if not exists exact_lat double precision;
+alter table public.listings add column if not exists exact_lng double precision;
 
 create index if not exists listings_status_idx on public.listings (status);
 create index if not exists listings_owner_idx on public.listings (owner_id);
@@ -97,6 +105,8 @@ returns trigger language plpgsql security definer set search_path = public as $$
 declare
   app_user boolean := auth.uid() is not null;
   candidate text;
+  ang double precision;
+  dist double precision;
 begin
   if tg_op = 'INSERT' then
     if app_user then new.owner_id := auth.uid(); end if;
@@ -125,6 +135,32 @@ begin
       new.review_note := null;
     end if;
   end if;
+
+  -- Location. The app always sends the real spot in lat/lng; it is copied to
+  -- exact_lat/exact_lng. Rent and lease show the real spot. Sale and BnB show a
+  -- point 200-350 m away in a random direction, chosen again only when the real
+  -- spot or the deal type changes, so the pin does not jump on every edit.
+  if tg_op = 'INSERT' or old.exact_lat is null
+     or new.lat is distinct from old.lat or new.lng is distinct from old.lng then
+    new.exact_lat := new.lat;
+    new.exact_lng := new.lng;
+  else
+    new.exact_lat := old.exact_lat;
+    new.exact_lng := old.exact_lng;
+  end if;
+  if new.deal in ('rent', 'lease') then
+    new.lat := new.exact_lat;
+    new.lng := new.exact_lng;
+  elsif tg_op = 'INSERT' or old.deal in ('rent', 'lease')
+        or new.exact_lat is distinct from old.exact_lat or new.exact_lng is distinct from old.exact_lng then
+    ang := random() * 2 * pi();
+    dist := 200 + random() * 150;
+    new.lat := new.exact_lat + dist * cos(ang) / 111320.0;
+    new.lng := new.exact_lng + dist * sin(ang) / (111320.0 * cos(radians(new.exact_lat)));
+  else
+    new.lat := old.lat;
+    new.lng := old.lng;
+  end if;
   return new;
 end;
 $$;
@@ -132,6 +168,28 @@ $$;
 drop trigger if exists listings_guard on public.listings;
 create trigger listings_guard before insert or update on public.listings
   for each row execute function public.listings_guard();
+
+-- Fill in hidden real locations for listings made before this version
+-- (this also moves existing sale and BnB pins).
+update public.listings set lat = lat where exact_lat is null;
+
+-- Visitors and signed-in users can read every column except the real location.
+-- The app asks for columns by name; if you add a column, add it here too.
+revoke select on public.listings from anon, authenticated;
+grant select (id, public_id, owner_id, category, deal, title, area, lat, lng, price, details,
+              description, video, photos, status, review_note, created_at, updated_at)
+  on public.listings to anon, authenticated;
+
+-- Real locations, for the listing's owner and for admins only.
+create or replace function public.exact_locations(ids uuid[])
+returns table (id uuid, lat double precision, lng double precision)
+language sql stable security definer set search_path = public as $$
+  select l.id, coalesce(l.exact_lat, l.lat), coalesce(l.exact_lng, l.lng)
+  from public.listings l
+  where l.id = any(ids) and (l.owner_id = auth.uid() or public.is_admin());
+$$;
+revoke execute on function public.exact_locations(uuid[]) from public, anon;
+grant execute on function public.exact_locations(uuid[]) to authenticated;
 
 -- ---------- Row level security ----------
 alter table public.listings enable row level security;
@@ -204,6 +262,48 @@ create policy "photos: owners upload to own folder" on storage.objects
 create policy "photos: owners or admins delete" on storage.objects
   for delete to authenticated
   using (bucket_id = 'photos' and ((storage.foldername(name))[1] = auth.uid()::text or public.is_admin()));
+
+-- ---------- Enquiries saved by the AI assistant ----------
+create table if not exists public.enquiries (
+  id             uuid primary key default gen_random_uuid(),
+  created_at     timestamptz not null default now(),
+  name           text not null check (char_length(name) between 1 and 80),
+  phone          text not null check (char_length(phone) between 10 and 20),
+  listing_id     text check (char_length(listing_id) <= 20),
+  message        text check (char_length(message) <= 1000),
+  preferred_time text check (char_length(preferred_time) <= 120),
+  source         text not null default 'assistant',
+  status         text not null default 'new' check (status in ('new', 'handled'))
+);
+create index if not exists enquiries_created_idx on public.enquiries (created_at desc);
+alter table public.enquiries enable row level security;
+do $$
+declare p record;
+begin
+  for p in select policyname from pg_policies where schemaname = 'public' and tablename = 'enquiries' loop
+    execute format('drop policy %I on public.enquiries', p.policyname);
+  end loop;
+end $$;
+-- Only admins read and update enquiries. Only the assistant (server side) adds them.
+create policy "enquiries: admins read" on public.enquiries for select to authenticated using (public.is_admin());
+create policy "enquiries: admins update" on public.enquiries for update to authenticated using (public.is_admin()) with check (public.is_admin());
+create policy "enquiries: admins delete" on public.enquiries for delete to authenticated using (public.is_admin());
+
+-- ---------- Daily chat limit per visitor (keeps AI costs predictable) ----------
+create table if not exists public.assistant_usage (
+  key   text not null,
+  day   date not null default current_date,
+  count int  not null default 0,
+  primary key (key, day)
+);
+alter table public.assistant_usage enable row level security;
+create or replace function public.assistant_hit(p_key text)
+returns int language sql volatile security definer set search_path = public as $$
+  insert into public.assistant_usage as u (key, day, count) values (p_key, current_date, 1)
+  on conflict (key, day) do update set count = u.count + 1
+  returning count;
+$$;
+revoke execute on function public.assistant_hit(text) from public, anon, authenticated;
 
 -- ---------- Make yourself an admin (run once, with your own email) ----------
 -- insert into public.admins (user_id)

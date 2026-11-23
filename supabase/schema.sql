@@ -20,6 +20,10 @@
 --     that only the owner and admins can read.
 --   * Sets up the public "photos" storage bucket; owners can upload only
 --     into their own folder.
+--   * Sets up the public "videos" bucket for video tours (one short video per
+--     listing, up to 50 MB), with the same owner-folder rule as photos.
+--   * Adds an admin-only "verified" flag (shows a Verified badge once you
+--     have checked the documents).
 --   * Creates the "enquiries" table where the AI assistant saves buyers'
 --     and guests' names and numbers for you to call back.
 --
@@ -63,6 +67,10 @@ alter table public.listings add column if not exists video text;
 -- Real location of sale and BnB listings (lat/lng is the public, shifted pin).
 alter table public.listings add column if not exists exact_lat double precision;
 alter table public.listings add column if not exists exact_lng double precision;
+-- Set by admins after checking documents; shows a "Verified" badge.
+alter table public.listings add column if not exists verified boolean not null default false;
+-- When the admin was emailed about this listing (so each alert is sent once).
+alter table public.listings add column if not exists notified_at timestamptz;
 
 create index if not exists listings_status_idx on public.listings (status);
 create index if not exists listings_owner_idx on public.listings (owner_id);
@@ -113,7 +121,9 @@ begin
     if app_user and not public.is_admin() then
       new.status := 'pending';
       new.review_note := null;
+      new.verified := false;
     end if;
+    if app_user then new.notified_at := null; end if;
     if new.public_id is null or new.public_id = '' then
       -- e.g. HR-48213 = House for Rent, LS-90412 = Land for Sale
       loop
@@ -129,10 +139,14 @@ begin
     new.public_id := old.public_id;
     new.created_at := old.created_at;
     new.updated_at := now();
+    if app_user then new.notified_at := old.notified_at; end if;
     if app_user and not public.is_admin() then
-      -- An owner's edit goes back for review before it shows on the map again.
+      -- An owner's edit goes back for review before it shows on the map again,
+      -- and the documents need checking again before it is marked verified.
       new.status := 'pending';
       new.review_note := null;
+      new.verified := false;
+      new.notified_at := null; -- so you get an email about the edit too
     end if;
   end if;
 
@@ -177,7 +191,7 @@ update public.listings set lat = lat where exact_lat is null;
 -- The app asks for columns by name; if you add a column, add it here too.
 revoke select on public.listings from anon, authenticated;
 grant select (id, public_id, owner_id, category, deal, title, area, lat, lng, price, details,
-              description, video, photos, status, review_note, created_at, updated_at)
+              description, video, photos, status, review_note, verified, created_at, updated_at)
   on public.listings to anon, authenticated;
 
 -- Real locations, for the listing's owner and for admins only.
@@ -262,6 +276,29 @@ create policy "photos: owners upload to own folder" on storage.objects
 create policy "photos: owners or admins delete" on storage.objects
   for delete to authenticated
   using (bucket_id = 'photos' and ((storage.foldername(name))[1] = auth.uid()::text or public.is_admin()));
+
+-- ---------- Video tours ----------
+-- Free Supabase plans allow files up to 50 MB and 1 GB of storage in total.
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('videos', 'videos', true, 52428800,
+        array['video/mp4', 'video/quicktime', 'video/webm', 'video/3gpp', 'video/x-m4v'])
+on conflict (id) do update
+  set public = true,
+      file_size_limit = excluded.file_size_limit,
+      allowed_mime_types = excluded.allowed_mime_types;
+
+drop policy if exists "videos: owners upload to own folder" on storage.objects;
+drop policy if exists "videos: owners or admins delete" on storage.objects;
+drop policy if exists "videos: owners or admins list" on storage.objects;
+create policy "videos: owners upload to own folder" on storage.objects
+  for insert to authenticated
+  with check (bucket_id = 'videos' and (storage.foldername(name))[1] = auth.uid()::text);
+create policy "videos: owners or admins list" on storage.objects
+  for select to authenticated
+  using (bucket_id = 'videos' and ((storage.foldername(name))[1] = auth.uid()::text or public.is_admin()));
+create policy "videos: owners or admins delete" on storage.objects
+  for delete to authenticated
+  using (bucket_id = 'videos' and ((storage.foldername(name))[1] = auth.uid()::text or public.is_admin()));
 
 -- ---------- Enquiries saved by the AI assistant ----------
 create table if not exists public.enquiries (

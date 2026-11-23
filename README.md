@@ -2,6 +2,8 @@
 
 Verified houses and lands on a satellite map. Visitors browse pins for houses (rent, sale, lease, BnB stays) and plots (sale, lease), see photos and video, and contact the owner or Lands n Lords on WhatsApp. Owners sign up, post a property for free, and an admin approves it before it appears on the map.
 
+**New to this? Follow [SETUP.md](SETUP.md), a step-by-step guide with no coding.**
+
 The whole app is one static page (`index.html`), so it can be hosted anywhere that serves files, such as GitHub Pages or Netlify. Accounts, listings and photos live in [Supabase](https://supabase.com).
 
 ## Features
@@ -11,7 +13,8 @@ The whole app is one static page (`index.html`), so it can be hosted anywhere th
 - Filters for Houses and Lands, and for Rent, Sale, Lease and BnB
 - Place search with suggestions, and a "near me" view
 - List view of listings in the current map area, nearest first
-- Listing card with photos (full-screen viewer with swipe), YouTube video, price and details
+- Listing card with a **video tour** first (uploaded from the owner's phone, or a YouTube link), photos (full-screen viewer with swipe), price and details
+- **Verified** badge on listings whose documents you have checked, and a "▶ Video tour" badge; the list view can show video tours only
 - Rent and lease (houses and land): contact the owner directly by WhatsApp or call, with directions
 - Sale and BnB: WhatsApp and Call go to your number, so enquiries (and your commission) come through you. The owner's number is never shown.
 - BnB booking request with dates and guests, sent on WhatsApp
@@ -26,13 +29,16 @@ The whole app is one static page (`index.html`), so it can be hosted anywhere th
 
 **Owners**
 - Create an account, sign in, reset a forgotten password
-- Post a property: details, location (GPS or tap on the map), up to 4 photos (resized automatically), YouTube link
+- Post a property: details, location (GPS or tap on the map), a **video tour recorded on the phone** (up to 1½ minutes and 50 MB, with upload progress) or a YouTube link, and up to 4 photos (resized automatically). Owners who skip the video get a gentle reminder.
 - My listings: see status, read the reason if a listing was not approved, edit, delete
 
 **Admin**
 - Review waiting listings with the owner's contact details, approve, or reject with a reason the owner sees
 - Remove live listings from the map, and restore rejected ones
 - Enquiries inbox: everyone who left their number with the assistant, with WhatsApp and Call buttons and a "handled" marker
+- Tick "Documents checked" when approving (or "Mark as Verified" later) to show the Verified badge
+- A red count on **My account** shows how many listings and enquiries are waiting
+- Optional **email alerts** for every new enquiry and every new or edited listing
 
 ## Setup
 
@@ -45,6 +51,7 @@ Open `index.html` and find the `CONFIG` block near the top of the script:
 | `callNumber` | Number visitors call for sale and BnB listings. Falls back to `whatsappNumber` if empty. |
 | `supabaseUrl`, `supabaseKey` | Your Supabase project URL and publishable (anon) key. Both are public by design. |
 | `directContact` | Which listings show the owner's phone to visitors. Default: rent and lease (houses and land). |
+| `reraNumber` | Your AP RERA agent registration number. Shown on sale and BnB listings and on the About page once filled in. |
 
 ### 2. Database (Supabase)
 1. Supabase dashboard > **SQL Editor** > New query.
@@ -80,6 +87,7 @@ Notes:
 - Cost control: each visitor (by IP address) can send up to 80 messages a day (`DAILY_LIMIT` in the function). The model is set in `MODEL`; Claude Opus 5.5 is used by default with quick ("low effort") replies. If a safety check declines a reply, the API retries on a suitable model automatically.
 - The assistant reads listings with the public key, so the database rules apply to it: it cannot see sale or BnB owner numbers or real locations even if a visitor tries to trick it.
 - To switch the chat off, set `assistant: false` in `CONFIG`.
+- **Email alerts (optional):** create a free account at [resend.com](https://resend.com), create an API key, and add secrets `RESEND_API_KEY` (the key), `ALERT_EMAIL` (the email you signed up to Resend with) and `APP_URL` (your app's address). Re-deploy the function after adding secrets.
 
 ### 4. Sign-in emails
 In Supabase > **Authentication > URL Configuration**:
@@ -87,9 +95,10 @@ In Supabase > **Authentication > URL Configuration**:
 - Add the same address under **Redirect URLs**, so password-reset and confirmation links come back to the app.
 
 ### 5. Host it
-For GitHub Pages: repository **Settings > Pages**, deploy from the `main` branch, root folder. Then:
-- Update `og:image` in `index.html` to the full address (e.g. `https://yourname.github.io/Lands-and-lords/icons/og-image.jpg`) so WhatsApp shows the preview image.
-- Set the Supabase Site URL (step 3) to the Pages address.
+For GitHub Pages: repository **Settings > Pages**, deploy from the `main` branch, root folder. The app is then at `https://prasannakuma1.github.io/Lands-and-lords/`, which is already set in `og:image` and `og:url` for WhatsApp link previews. If you move to your own web address, update those two lines and the Supabase Site URL.
+
+### Storage limits
+Supabase's free plan allows files up to 50 MB and 1 GB of storage in total: roughly 20–30 short video tours plus photos. When it fills up, move to the Pro plan, or ask owners for YouTube links, which cost nothing to store.
 
 ## Without Supabase
 If `supabaseUrl` is empty, the app reads listings from a Google Sheet published as CSV (`sheetCsvUrl`), or shows sample listings when that is empty too. Owner accounts and posting need Supabase.
@@ -99,6 +108,7 @@ If `supabaseUrl` is empty, the app reads listings from a Google Sheet published 
 index.html              the app (HTML, CSS and JavaScript)
 manifest.webmanifest    install-to-home-screen details
 icons/                  app icons and the link-preview image
-supabase/schema.sql     database tables, access rules, photo storage, enquiries
+supabase/schema.sql     database tables, access rules, photo and video storage, enquiries
+SETUP.md                step-by-step setup guide
 supabase/functions/assistant/index.ts   the AI assistant (Supabase Edge Function)
 ```

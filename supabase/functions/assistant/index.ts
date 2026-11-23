@@ -6,6 +6,10 @@
 //   ANTHROPIC_API_KEY   required, from console.anthropic.com
 //   BUSINESS_PHONE      optional, the number visitors can WhatsApp or call, e.g. +917780602824
 //   APP_NAME            optional, defaults to "Lands n Lords"
+//   RESEND_API_KEY      optional, from resend.com, to email you about new enquiries and listings
+//   ALERT_EMAIL         optional, where alerts go (with Resend's free test sender this must be
+//                       the email address you signed up to Resend with)
+//   APP_URL             optional, your app's address, linked from alert emails
 // Supabase provides SUPABASE_URL, SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY itself.
 // If your project only has the new publishable/secret keys, also set PUBLIC_KEY and
 // SECRET_KEY to those values.
@@ -17,6 +21,10 @@ import { createClient } from "npm:@supabase/supabase-js@2.45.4";
 
 const APP = Deno.env.get("APP_NAME") || "Lands n Lords";
 const BUSINESS_PHONE = Deno.env.get("BUSINESS_PHONE") || "";
+const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || "";
+const ALERT_EMAIL = Deno.env.get("ALERT_EMAIL") || "";
+const ALERT_FROM = Deno.env.get("ALERT_FROM") || `${APP} <onboarding@resend.dev>`;
+const APP_URL = Deno.env.get("APP_URL") || "";
 const MODEL = "claude-opus-5-5";
 const MAX_TURNS = 24;          // messages kept from the conversation
 const MAX_CHARS = 1000;        // per visitor message
@@ -33,7 +41,23 @@ const publicDb = createClient(SUPABASE_URL, PUBLIC_KEY, noSession);
 const serverDb = createClient(SUPABASE_URL, SECRET_KEY, noSession);
 const anthropic = new Anthropic(); // reads ANTHROPIC_API_KEY
 
-const COLS = "id,public_id,category,deal,title,area,lat,lng,price,details,description,video,photos,created_at";
+const COLS = "id,public_id,category,deal,title,area,lat,lng,price,details,description,video,photos,verified,created_at";
+
+/* Email alert to the admin. Optional: does nothing until RESEND_API_KEY and ALERT_EMAIL are set. */
+async function sendAlert(subject: string, lines: string[]) {
+  if (!RESEND_API_KEY || !ALERT_EMAIL) return;
+  const text = lines.filter(Boolean).join("\n") + (APP_URL ? `\n\nOpen ${APP}: ${APP_URL}` : "");
+  try {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ from: ALERT_FROM, to: [ALERT_EMAIL], subject, text }),
+    });
+    if (!res.ok) console.error("Alert email failed", res.status, await res.text());
+  } catch (e) {
+    console.error("Alert email failed", e);
+  }
+}
 const DIRECT = new Set(["rent", "lease"]); // deals where visitors may contact the owner directly
 const DEAL_LABEL: Record<string, string> = { rent: "for rent", sale: "for sale", lease: "for lease", bnb: "BnB stay" };
 
@@ -53,6 +77,8 @@ function summary(r: Row, near?: [number, number]) {
     title: text(r.title), area: text(r.area), price: r.price || "Price on request",
     details: text(r.details), photos: (r.photos || []).length,
     listed: String(r.created_at || "").slice(0, 10),
+    verified: r.verified ? "documents checked by " + APP : "not yet verified",
+    video_tour: r.video ? "yes" : "no",
     contact: direct ? "owner directly" : `through ${APP} only`,
   };
   if (near) out.distance_km = Math.round(km(near, [r.lat, r.lng]) * 10) / 10;
@@ -106,7 +132,6 @@ function makeTools(near?: [number, number]) {
       if (!r) return `No live listing with ID ${id}. It may be sold, rented out or not approved yet.`;
       const out = summary(r, near);
       out.description = DIRECT.has(r.deal) ? r.description || "" : hideContacts(r.description);
-      out.video = r.video ? "yes" : "no";
       if (DIRECT.has(r.deal)) {
         const { data: c } = await publicDb.from("listing_contacts").select("owner_name,owner_phone").eq("listing_id", r.id).maybeSingle();
         out.owner = c ? { name: c.owner_name || "Owner", phone: c.owner_phone || "" } : "not available";
@@ -137,6 +162,15 @@ function makeTools(near?: [number, number]) {
         message: input.message.trim(), preferred_time: input.preferred_time?.trim() || null, source: "assistant",
       });
       if (error) return "Could not save the enquiry. Ask them to WhatsApp or call us instead.";
+      await sendAlert(`New enquiry: ${input.name.trim()}${input.listing_id ? " · " + input.listing_id.trim().toUpperCase() : ""}`, [
+        `Name: ${input.name.trim()}`,
+        `Phone: ${input.phone.trim()}`,
+        input.listing_id ? `Listing: ${input.listing_id.trim().toUpperCase()}` : "",
+        `Wants: ${input.message.trim()}`,
+        input.preferred_time ? `Best time: ${input.preferred_time.trim()}` : "",
+        "",
+        "Saved in My account > Enquiries.",
+      ]);
       return "Saved. The team will call them back.";
     },
   });
@@ -174,11 +208,36 @@ const Body = z.object({
   center: z.tuple([z.number().min(-90).max(90), z.number().min(-180).max(180)]).optional(),
 });
 
+/* An owner just posted or edited a listing: email the admin once per submission.
+   The details come from the database, not from the request, so this cannot be used to send
+   arbitrary emails; listings already alerted (notified_at set) are skipped. */
+async function listingPosted(id: string) {
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return json({ ok: false }, 400);
+  const { data: r } = await serverDb.from("listings")
+    .select("id,public_id,category,deal,title,area,price,status,notified_at,updated_at,listing_contacts(owner_name,owner_phone)")
+    .eq("id", id).maybeSingle();
+  if (!r || r.status !== "pending" || r.notified_at) return json({ ok: true });
+  if (Date.now() - new Date(r.updated_at).getTime() > 30 * 60 * 1000) return json({ ok: true });
+  await serverDb.from("listings").update({ notified_at: new Date().toISOString() }).eq("id", id);
+  const c = Array.isArray(r.listing_contacts) ? r.listing_contacts[0] : r.listing_contacts;
+  await sendAlert(`New listing to approve: ${r.public_id} · ${r.title}`, [
+    `${r.category === "land" ? "Land" : "House"} ${DEAL_LABEL[r.deal] || r.deal}: ${r.title}`,
+    `Area: ${r.area}`,
+    `Price: ${r.price || "not given"}`,
+    c ? `Owner: ${c.owner_name || "no name"} · ${c.owner_phone || "no phone"}` : "",
+    "",
+    "Review it in My account > Review listings.",
+  ]);
+  return json({ ok: true });
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return json({ error: "Use POST" }, 405);
 
-  const parsed = Body.safeParse(await req.json().catch(() => null));
+  const raw = await req.json().catch(() => null);
+  if (raw && raw.type === "listing_posted") return listingPosted(String(raw.listing_id || ""));
+  const parsed = Body.safeParse(raw);
   if (!parsed.success) return json({ error: "Bad request" }, 400);
   const { listing_id, center } = parsed.data;
 

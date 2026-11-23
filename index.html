@@ -13,12 +13,13 @@
 <meta name="apple-mobile-web-app-title" content="Lands n Lords">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="description" content="Verified houses for rent, sale and lease, BnB stays and plots on a satellite map. Contact owners directly or through Lands n Lords.">
-<!-- Link previews (WhatsApp, Facebook, X). Change og:image to your full site address once it is live, e.g. https://yourname.github.io/Lands-and-lords/icons/og-image.jpg -->
+<!-- Link previews (WhatsApp, Facebook, X). If you move to your own web address, change og:image and og:url. -->
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Lands n Lords">
 <meta property="og:title" content="Lands n Lords: verified houses and lands">
 <meta property="og:description" content="Houses for rent, sale and lease, BnB stays and plots on a satellite map.">
-<meta property="og:image" content="icons/og-image.jpg">
+<meta property="og:image" content="https://prasannakuma1.github.io/Lands-and-lords/icons/og-image.jpg">
+<meta property="og:url" content="https://prasannakuma1.github.io/Lands-and-lords/">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
@@ -511,6 +512,25 @@ button.brand { border: 0; background: none; padding: 0; margin: 0; color: inheri
 .chat-form button:disabled { opacity: .5; }
 .linkish { border: 0; cursor: pointer; }
 
+/* ---------- Video tours, verified, alerts ---------- */
+/* Long listing cards scroll; never squash the video or photos to fit. */
+.sheet > * { flex-shrink: 0; }
+@media (min-width: 820px) { .sheet { max-height: calc(100% - 92px); } }
+.video video { position: absolute; inset: 0; width: 100%; height: 100%; background: #000; }
+.item .video { margin: 4px 0; max-width: 420px; }
+.badge.vid { background: #0c3b41; color: #fff; }
+.badge.verified { background: #d8f1e2; color: #0f5c31; }
+.badge.verified .ico { width: 13px; height: 13px; stroke-width: 3; }
+.video-pick .vthumb video { display: block; width: 180px; height: 120px; object-fit: cover; border-radius: 10px; background: #000; }
+.rera { margin: 0; font-size: 11.5px; color: var(--ink-soft); text-align: center; }
+.check { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; color: var(--ink); }
+.check input { width: 20px; height: 20px; accent-color: var(--harbour); }
+.tab.vf { display: inline-flex; align-items: center; gap: 6px; }
+.fab-count {
+  display: inline-grid; place-items: center; min-width: 22px; height: 22px; margin-left: 8px; padding: 0 6px;
+  border-radius: 999px; background: #d93a3a; color: #fff; font-size: 12px; font-weight: 700;
+}
+
 /* ---------- Account panel extras ---------- */
 .stack { display: flex; flex-direction: column; gap: 12px; }
 .field-label { font-size: 13px; color: var(--ink-soft); margin-bottom: -6px; }
@@ -679,6 +699,10 @@ const CONFIG = {
   // Everything else (sale and BnB) shows only your WhatsApp and Call buttons, so the
   // owner's number stays private and enquiries come through you. Written as "category-deal".
   directContact: ["house-rent", "house-lease", "land-lease"],
+
+  // Your AP RERA agent registration number, once you have it, e.g. "A/VSP/2026/000123".
+  // It is shown on sale and BnB listings and on the About page. Leave "" until then.
+  reraNumber: "",
 
   // AI assistant (see supabase/functions/assistant). Answers visitors instantly and saves
   // their enquiries for you. Set to false to hide the chat button.
@@ -1079,6 +1103,8 @@ const ICONS = {
   phone: '<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/>',
   pin: '<path d="M12 21s-7-6.1-7-11a7 7 0 0 1 14 0c0 4.9-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/>',
   share: '<path d="M12 3v12M7 8l5-5 5 5M5 14v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5"/>',
+  video: '<rect x="3" y="6" width="13" height="12" rx="2"/><path d="m16 10 5-3v10l-5-3z"/>',
+  check: '<path d="m5 12.5 4.5 4.5L19 7.5"/>',
   heart: '<path d="M12 20s-7.5-4.6-9.2-9.3C1.6 7.3 4 4 7.4 4c2 0 3.5 1.1 4.6 2.7C13.1 5.1 14.6 4 16.6 4 20 4 22.4 7.3 21.2 10.7 19.5 15.4 12 20 12 20z"/>'
 };
 function icon(name) {
@@ -1105,6 +1131,13 @@ function callButton(label, number) {
   if (digits(number)) a.href = "tel:" + (/^\s*\+/.test(number) ? "+" : "") + digits(number);
   else { a.href = "#"; a.addEventListener("click", ev => { ev.preventDefault(); toast("Add your phone number in the settings to switch this on."); }); }
   return a;
+}
+
+function verifiedBadge() {
+  const b = el("span", "badge verified");
+  b.append(icon("check"), document.createTextNode("Verified"));
+  b.title = "Documents checked by " + CONFIG.appName;
+  return b;
 }
 
 /* Saved listings, kept on this device only. */
@@ -1162,6 +1195,8 @@ function openListing(id) {
   const hl = el("div");
   const badges = el("div", "badges");
   badges.append(el("span", "badge " + l.deal, CATS[l.category].one + " · " + DEALS[l.deal].label), el("span", "badge", l.id));
+  if (l.verified) badges.append(verifiedBadge());
+  if (hasVideo(l)) badges.append(el("span", "badge vid", "▶ Video tour"));
   if (isNew(l)) badges.append(el("span", "badge new", "New"));
   if (l.sample) badges.append(el("span", "badge sample", "Sample listing"));
   const age = ageText(l.listed);
@@ -1174,6 +1209,21 @@ function openListing(id) {
   acts.append(saveButton(l), x);
   head.append(hl, acts);
   s.append(head);
+
+  // Video tour first: it answers most questions before anyone travels for a visit.
+  const vid = youtubeId(l.video);
+  if (isUploadedVideo(l.video)) s.append(videoPlayer(l.video, l.title));
+  else if (vid) {
+    const box = el("div", "video");
+    const f = el("iframe");
+    f.src = "https://www.youtube-nocookie.com/embed/" + vid;
+    f.title = "Video tour of " + l.title;
+    f.loading = "lazy";
+    f.allow = "accelerometer; encrypted-media; picture-in-picture; fullscreen";
+    f.allowFullscreen = true;
+    box.append(f);
+    s.append(box);
+  }
 
   if (l.photos && l.photos.length) {
     const ph = el("div", "photos");
@@ -1191,21 +1241,6 @@ function openListing(id) {
   if (l.details) money.append(el("p", "facts", shownText(l, l.details)));
   s.append(money);
   if (l.description) s.append(el("p", "desc", shownText(l, l.description)));
-
-  const vid = youtubeId(l.video);
-  if (vid) {
-    const box = el("div", "video");
-    const f = el("iframe");
-    f.src = "https://www.youtube-nocookie.com/embed/" + vid;
-    f.title = "Video of " + l.title;
-    f.loading = "lazy";
-    f.allow = "accelerometer; encrypted-media; picture-in-picture; fullscreen";
-    f.allowFullscreen = true;
-    box.append(f);
-    const a = el("a", "video-link", "Open the video on YouTube");
-    a.href = "https://www.youtube.com/watch?v=" + vid; a.target = "_blank"; a.rel = "noopener";
-    s.append(box, a);
-  }
 
   const c = el("div", "contact");
   const btns = el("div", "btns");
@@ -1271,6 +1306,7 @@ function openListing(id) {
   share.addEventListener("click", () => shareListing(l));
   btns.append(share);
   c.append(btns);
+  if (!showOwner && CONFIG.reraNumber) c.append(el("p", "rera", "AP RERA registered agent · Reg. No. " + CONFIG.reraNumber));
   s.append(c);
   s.hidden = false;
 }
@@ -1296,7 +1332,7 @@ function openFromHash() {
 }
 
 /* ---- List of listings: nearest in the map area, newest, or saved ---- */
-let listMode = "near";
+let listMode = "near", listVideoOnly = false;
 function listCard(l) {
   const card = el("div", "lcard");
   const open = el("button", "lcard-open"); open.type = "button";
@@ -1306,6 +1342,8 @@ function listCard(l) {
   const txt = el("div", "lcard-text");
   const tags = el("div", "lcard-tags");
   tags.append(el("span", "badge " + l.deal, (l.category === "land" ? "Land · " : "") + DEALS[l.deal].label));
+  if (l.verified) tags.append(verifiedBadge());
+  if (hasVideo(l)) tags.append(el("span", "badge vid", "▶ Video"));
   if (isNew(l)) tags.append(el("span", "badge new", "New"));
   txt.append(tags, el("strong", "", shownText(l, l.title)), el("span", "lcard-area", shownText(l, l.area)), el("span", "lcard-price", l.price || "Price on request"));
   open.append(cover, txt);
@@ -1334,6 +1372,7 @@ function viewList(mode) {
       items = items.slice().sort((a, b) => km(here, [a.lat, a.lng]) - km(here, [b.lat, b.lng]));
     }
   }
+  if (listVideoOnly) items = items.filter(hasVideo);
   const body = openPanel(title + " (" + items.length + ")");
   const tabs = el("div", "tabs");
   [["near", "Nearest"], ["new", "Newest"], ["saved", "Saved" + (saved.size ? " · " + listings.filter(l => saved.has(l.id)).length : "")]].forEach(([k, label]) => {
@@ -1341,10 +1380,13 @@ function viewList(mode) {
     t.setAttribute("aria-pressed", String(listMode === k));
     tabs.append(t);
   });
+  const vf = btnEl("▶ With video tour only", "tab vf", () => { listVideoOnly = !listVideoOnly; viewList(); });
+  vf.setAttribute("aria-pressed", String(listVideoOnly));
+  tabs.append(vf);
   body.append(tabs);
   if (note) body.append(el("p", "msg soft", note));
   if (!items.length) {
-    body.append(el("p", "msg soft", listMode === "saved" ? "Tap the heart on any listing to save it here." : "No listings in this category yet."));
+    body.append(el("p", "msg soft", listVideoOnly ? "No listings with a video tour here yet." : listMode === "saved" ? "Tap the heart on any listing to save it here." : "No listings in this category yet."));
     return;
   }
   items.forEach(l => body.append(listCard(l)));
@@ -1483,6 +1525,17 @@ async function sendChat(text) {
     : { role: "assistant", error: true, content: "Sorry, I can't answer right now. Please WhatsApp or call us." });
   saveChat(); renderChat();
 }
+/* Ask the assistant function to email the admin about a new or edited listing.
+   It reads the listing from the database itself and sends each alert once. */
+function notifyListing(id) {
+  if (!chatReady() || !id) return;
+  fetch(chatUrl(), {
+    method: "POST",
+    headers: { "Content-Type": "application/json", apikey: CONFIG.supabaseKey, Authorization: "Bearer " + CONFIG.supabaseKey },
+    body: JSON.stringify({ type: "listing_posted", listing_id: id })
+  }).catch(() => {});
+}
+
 function initChat() {
   if (!chatReady()) return;
   $("chatBtn").hidden = false;
@@ -1501,7 +1554,8 @@ function viewAbout() {
     "Rent and lease: call or WhatsApp the owner directly. No fee for tenants or owners.",
     "Houses and plots for sale, and BnB stays: WhatsApp or call " + n + ". We arrange the site visit, document check and registration.",
     "Questions any time: tap \"Ask us\" and our assistant replies instantly.",
-    "Owners: posting is free. Every listing is checked by " + n + " before it appears on the map.");
+    "Owners: posting is free. Every listing is checked by " + n + " before it appears on the map. Listings marked Verified have had their documents checked by us.",
+    "Many listings have a video tour, so you can see the property before you travel for a visit.");
   sec("Privacy",
     "When you post a property we store your email address, the listing details and photos, and your name and phone number.",
     "Your phone number is shown to visitors only for rent and lease listings. For sales and stays it is seen only by " + n + ".",
@@ -1509,6 +1563,7 @@ function viewAbout() {
     "The chat is answered by an AI assistant (Claude, made by Anthropic), which sees your messages and the public listing details. If you leave your name and number in the chat, we save them to call you back. Please don't share bank or ID details in the chat.",
     "The app asks for your location only to centre the map near you. It is not saved. Place searches are sent to OpenStreetMap services to find the place.",
     "You can edit or delete your listings at any time from My listings. To delete your account, contact us.");
+  if (CONFIG.reraNumber) sec("Registration", n + " is a registered real estate agent with the Andhra Pradesh Real Estate Regulatory Authority (AP RERA). Registration No. " + CONFIG.reraNumber + ".");
   sec("Please note", "Listing details are provided by owners. Always check the documents and see the property in person before you pay anything.");
   const btns = el("div", "btns");
   if (digits(CONFIG.whatsappNumber)) { const a = el("a", "btn wa", "WhatsApp us"); a.href = waLink(CONFIG.whatsappNumber, "Hi " + n + ", "); a.target = "_blank"; a.rel = "noopener"; btns.append(a); }
@@ -1518,7 +1573,7 @@ function viewAbout() {
 
 /* ---- Owner accounts, posting and approval (Supabase) ---- */
 let sb = null, session = null, isAdmin = false, pickMode = null, draftMarker = null;
-const newDraft = () => ({ id: null, publicId: "", wasStatus: "", photos: [], removed: [], category: "house", deal: "rent", title: "", area: "", price: "", details: "", description: "", video: "", ownerName: "", ownerPhone: "", lat: null, lng: null, files: [] });
+const newDraft = () => ({ id: null, publicId: "", wasStatus: "", photos: [], removed: [], videoFile: null, videoUrl: "", youtube: "", nudged: false, category: "house", deal: "rent", title: "", area: "", price: "", details: "", description: "", video: "", ownerName: "", ownerPhone: "", lat: null, lng: null, files: [] });
 let draft = newDraft();
 const PLACEHOLDER_PRICE = { rent: "₹14,000 / month", sale: "₹78 Lakh", lease: "₹6 Lakh lease", bnb: "₹2,800 / night" };
 const STATUS_TEXT = { pending: "Waiting for approval", active: "Live on the map", rejected: "Not approved" };
@@ -1541,11 +1596,28 @@ async function refreshAdmin() {
   const { data } = await sb.from("admins").select("user_id").eq("user_id", session.user.id).maybeSingle();
   isAdmin = !!data;
 }
-function updateFab() { $("postBtn").textContent = session ? "My account" : "+ Post property"; }
+let fabSeq = 0;
+function updateFab() {
+  const b = $("postBtn");
+  const seq = ++fabSeq;
+  b.textContent = session ? "My account" : "+ Post property";
+  if (session && isAdmin && sb) {
+    // Admin: show how many things are waiting (listings to review + new enquiries).
+    Promise.all([
+      sb.from("listings").select("id", { count: "exact", head: true }).eq("status", "pending"),
+      sb.from("enquiries").select("id", { count: "exact", head: true }).eq("status", "new")
+    ]).then(([a, e]) => {
+      const n = (a.count || 0) + (e.count || 0);
+      if (seq !== fabSeq || pickMode) return; // a newer update is on its way
+      b.querySelectorAll(".fab-count").forEach(x => x.remove());
+      if (n) { const d = el("span", "fab-count", String(n)); d.setAttribute("aria-label", n + " waiting"); b.append(d); }
+    }).catch(() => {});
+  }
+}
 
 /* Columns visitors may read. The real location of sale and BnB listings is in
    hidden columns; owners and admins get it through exact_locations(). */
-const LISTING_COLS = "id,public_id,owner_id,category,deal,title,area,lat,lng,price,details,description,video,photos,status,review_note,created_at";
+const LISTING_COLS = "id,public_id,owner_id,category,deal,title,area,lat,lng,price,details,description,video,photos,status,review_note,verified,created_at";
 async function exactLocations(ids) {
   const out = new Map();
   if (!sb || !ids.length) return out;
@@ -1574,7 +1646,7 @@ async function loadFromSupabase() {
     return {
       id: r.public_id, uid: r.id, category: r.category, deal: r.deal, title: r.title, area: r.area,
       lat: r.lat, lng: r.lng, price: r.price || "", details: r.details || "", description: r.description || "",
-      video: r.video || "", photos: (r.photos || []).filter(u => /^https:\/\//.test(u)), listed: r.created_at || "",
+      video: r.video || "", photos: (r.photos || []).filter(u => /^https:\/\//.test(u)), listed: r.created_at || "", verified: !!r.verified,
       ownerName: direct ? (c.owner_name || "") : "", ownerPhone: direct ? (c.owner_phone || "") : ""
     };
   });
@@ -1725,14 +1797,69 @@ async function shrinkPhoto(file) {
     return blob && blob.size < file.size ? new File([blob], "photo.jpg", { type: "image/jpeg" }) : file;
   } catch (e) { return file; }
 }
-function storagePath(url) {
-  const m = String(url || "").match(/\/object\/public\/photos\/([^?#]+)/);
-  return m ? decodeURIComponent(m[1]) : null;
+function storageRef(url) {
+  const m = String(url || "").match(/\/object\/public\/(photos|videos)\/([^?#]+)/);
+  return m ? { bucket: m[1], path: decodeURIComponent(m[2]) } : null;
 }
-async function removePhotos(urls) {
-  const paths = (urls || []).map(storagePath).filter(Boolean);
-  if (!paths.length || !sb) return;
-  try { await sb.storage.from("photos").remove(paths); } catch (e) { /* best effort */ }
+/* Delete uploaded photos or videos (best effort; used when they are replaced or the listing is deleted). */
+async function removeFiles(urls) {
+  if (!sb) return;
+  const byBucket = {};
+  (urls || []).map(storageRef).filter(Boolean).forEach(r => { (byBucket[r.bucket] = byBucket[r.bucket] || []).push(r.path); });
+  for (const b of Object.keys(byBucket)) { try { await sb.storage.from(b).remove(byBucket[b]); } catch (e) { /* best effort */ } }
+}
+const removePhotos = removeFiles;
+
+/* ---- video tours ---- */
+const MAX_VIDEO_MB = 50, MAX_VIDEO_SECONDS = 90;
+const VIDEO_EXT = { "video/mp4": "mp4", "video/quicktime": "mov", "video/webm": "webm", "video/3gpp": "3gp", "video/x-m4v": "m4v" };
+const isUploadedVideo = v => /^https:\/\/\S+\/storage\/v1\/object\/public\/videos\//.test(String(v || ""));
+const hasVideo = l => !!(l && (youtubeId(l.video) || isUploadedVideo(l.video)));
+function videoDuration(file) {
+  return new Promise(resolve => {
+    const v = document.createElement("video");
+    const url = URL.createObjectURL(file);
+    const done = d => { URL.revokeObjectURL(url); resolve(d); };
+    const t = setTimeout(() => done(null), 6000);
+    v.preload = "metadata"; v.muted = true;
+    v.onloadedmetadata = () => { clearTimeout(t); done(isFinite(v.duration) ? v.duration : null); };
+    v.onerror = () => { clearTimeout(t); done(null); };
+    v.src = url;
+  });
+}
+/* Upload with a progress callback (videos are large; owners should see it moving). */
+async function uploadWithProgress(bucket, path, file, onProgress) {
+  const { data } = await sb.auth.getSession();
+  const token = data && data.session ? data.session.access_token : "";
+  return new Promise((resolve, reject) => {
+    const x = new XMLHttpRequest();
+    x.open("POST", CONFIG.supabaseUrl.replace(/\/$/, "") + "/storage/v1/object/" + bucket + "/" + path);
+    x.setRequestHeader("Authorization", "Bearer " + token);
+    x.setRequestHeader("apikey", CONFIG.supabaseKey);
+    x.setRequestHeader("x-upsert", "false");
+    x.setRequestHeader("cache-control", "max-age=31536000");
+    x.setRequestHeader("Content-Type", file.type || "video/mp4");
+    x.upload.onprogress = e => { if (e.lengthComputable && onProgress) onProgress(e.loaded / e.total); };
+    x.onload = () => {
+      if (x.status >= 200 && x.status < 300) resolve(CONFIG.supabaseUrl.replace(/\/$/, "") + "/storage/v1/object/public/" + bucket + "/" + path);
+      else {
+        let m = "Upload failed (" + x.status + ").";
+        try { const j = JSON.parse(x.responseText); if (j.message) m = j.message; } catch (e) {}
+        if (x.status === 413 || /size/i.test(m)) m = "The video is too large. Please keep it under " + MAX_VIDEO_MB + " MB.";
+        reject(new Error(m));
+      }
+    };
+    x.onerror = () => reject(new Error("network"));
+    x.send(file);
+  });
+}
+function videoPlayer(src, title) {
+  const box = el("div", "video");
+  const v = el("video");
+  v.src = src; v.controls = true; v.preload = "metadata"; v.playsInline = true;
+  v.setAttribute("playsinline", ""); v.setAttribute("aria-label", "Video tour of " + title);
+  box.append(v);
+  return box;
 }
 function thumb(src, onRemove) {
   const w = el("div", "thumb");
@@ -1772,7 +1899,8 @@ async function editListing(uid) {
   draft = Object.assign(newDraft(), {
     id: r.id, publicId: r.public_id, wasStatus: r.status,
     category: r.category, deal: r.deal, title: r.title || "", area: r.area || "", price: r.price || "",
-    details: r.details || "", description: r.description || "", video: r.video || "",
+    details: r.details || "", description: r.description || "",
+    videoUrl: isUploadedVideo(r.video) ? r.video : "", youtube: isUploadedVideo(r.video) ? "" : (r.video || ""),
     ownerName: c.owner_name || "", ownerPhone: c.owner_phone || "",
     lat: exact[0], lng: exact[1], photos: (r.photos || []).slice()
   });
@@ -1841,6 +1969,51 @@ function viewPost() {
   });
   renderPhotos();
 
+  // Video tour: one short video from the phone, or a YouTube link.
+  const videoIn = inp("input", { type: "file", id: "f_video", accept: "video/*", className: "sr-only" });
+  const addVideo = el("label", "btn small add-photos");
+  const videoBox = el("div", "video-pick");
+  const videoNote = el("p", "msg soft");
+  const ytField = fieldOf("Or paste a YouTube link", bind("youtube", "input", { type: "url", placeholder: "https://youtu.be/..." }));
+  const renderVideo = () => {
+    videoBox.textContent = "";
+    const src = draft.videoFile ? URL.createObjectURL(draft.videoFile) : draft.videoUrl;
+    if (src) {
+      const w = el("div", "thumb vthumb");
+      const v = el("video"); v.src = src; v.muted = true; v.playsInline = true; v.preload = "metadata"; v.controls = true;
+      const x = btnEl("×", "thumb-x", () => {
+        if (draft.videoUrl) draft.removed.push(draft.videoUrl);
+        draft.videoFile = null; draft.videoUrl = ""; renderVideo();
+      });
+      x.setAttribute("aria-label", "Remove video");
+      w.append(v, x); videoBox.append(w);
+    }
+    videoBox.hidden = !src;
+    addVideo.textContent = "";
+    addVideo.append(icon("video"), document.createTextNode(src ? "Replace video" : "Record or add a video"), videoIn);
+    ytField.hidden = !!src;
+    videoNote.textContent = src
+      ? (draft.videoFile ? (draft.videoFile.size / 1048576).toFixed(1) + " MB. It uploads when you send the listing." : "Your video tour.")
+      : "Walk through the property in one take, up to 1½ minutes and " + MAX_VIDEO_MB + " MB. People see it before they visit, so you get fewer wasted visits.";
+  };
+  videoIn.addEventListener("change", async () => {
+    const f = videoIn.files[0]; videoIn.value = "";
+    if (!f) return;
+    if (!/^video\//.test(f.type)) { toast("Please choose a video file."); return; }
+    if (f.size > MAX_VIDEO_MB * 1048576) {
+      toast("This video is " + Math.round(f.size / 1048576) + " MB. Please keep it under " + MAX_VIDEO_MB + " MB: record in HD (720p or 1080p) instead of 4K, or make it shorter.");
+      return;
+    }
+    const d = await videoDuration(f);
+    if (d && d > MAX_VIDEO_SECONDS + 5) { toast("This video is " + Math.round(d) + " seconds. Please keep it under 1½ minutes."); return; }
+    if (draft.videoUrl) draft.removed.push(draft.videoUrl);
+    draft.videoFile = f; draft.videoUrl = ""; draft.youtube = "";
+    const yt = $("f_youtube"); if (yt) yt.value = "";
+    renderVideo();
+    if (draft.nudged) { send.textContent = sendLabel; say(msg, "", ""); }
+  });
+  renderVideo();
+
   const locText = el("p", "msg soft");
   const showLoc = () => { locText.textContent = draft.lat == null ? "Location not set yet. Use the buttons below." : "Location set (" + draft.lat.toFixed(5) + ", " + draft.lng.toFixed(5) + ")."; };
   showLoc();
@@ -1875,7 +2048,13 @@ function viewPost() {
     if (draft.lat == null) return fail("Set the location of the property on the map.");
     const ph = digits(draft.ownerPhone);
     if (ph.length < 10 || ph.length > 13) return fail("Enter your 10-digit phone number.");
-    if (draft.video.trim() && !youtubeId(draft.video)) return fail("The video link must be a YouTube link.");
+    if (draft.youtube.trim() && !youtubeId(draft.youtube)) return fail("The video link must be a YouTube link.");
+    if (!editing && !draft.nudged && !draft.videoFile && !draft.videoUrl && !draft.youtube.trim()) {
+      draft.nudged = true;
+      say(msg, "soft", "Tip: listings with a video tour get more serious enquiries and fewer wasted visits. Add one above, or tap again to post without a video.");
+      send.textContent = "Post without video";
+      return;
+    }
     if (!isDirect(draft) && ["title", "area", "details", "description"].some(k => findContacts(draft[k]).length))
       return fail("Please remove phone numbers, emails and links from the listing text. Put your number only in \"Your phone\".");
     for (const f of draft.files) if (f.size > 25 * 1024 * 1024) return fail("One photo is very large (over 25 MB). Please choose a smaller one.");
@@ -1893,12 +2072,20 @@ function viewPost() {
         if (up.error) throw up.error;
         uploaded.push(sb.storage.from("photos").getPublicUrl(path).data.publicUrl);
       }
+      let video = draft.videoUrl || (draft.youtube.trim() ? draft.youtube.trim() : "");
+      if (draft.videoFile) {
+        const f = draft.videoFile;
+        const path = session.user.id + "/" + Date.now() + "-" + Math.random().toString(36).slice(2, 8) + "." + (VIDEO_EXT[f.type] || "mp4");
+        say(msg, "soft", "Uploading video... 0%");
+        video = await uploadWithProgress("videos", path, f, p => say(msg, "soft", "Uploading video... " + Math.round(p * 100) + "%. Please keep this screen open."));
+        uploaded.push(video);
+      }
       say(msg, "soft", "Saving...");
       const fields = {
         category: draft.category, deal: draft.deal,
         title: draft.title.trim(), area: draft.area.trim(), lat: draft.lat, lng: draft.lng,
         price: draft.price.trim(), details: draft.details.trim(), description: draft.description.trim(),
-        video: draft.video.trim(), photos: draft.photos.concat(uploaded).slice(0, MAX_PHOTOS), status: "pending"
+        video, photos: draft.photos.concat(uploaded.filter(u => !isUploadedVideo(u))).slice(0, MAX_PHOTOS), status: "pending"
       };
       const contact = { owner_name: draft.ownerName.trim(), owner_phone: draft.ownerPhone.trim() };
       if (editing) {
@@ -1912,13 +2099,15 @@ function viewPost() {
           const ci = await sb.from("listing_contacts").insert(Object.assign({ listing_id: draft.id }, contact));
           if (ci.error) throw ci.error;
         }
-        removePhotos(draft.removed);
+        removeFiles(draft.removed);
+        notifyListing(draft.id);
       } else {
         const ins = await sb.from("listings").insert(Object.assign({ owner_id: session.user.id }, fields)).select("id").single();
         if (ins.error) throw ins.error;
         saved = true;
         const con = await sb.from("listing_contacts").insert(Object.assign({ listing_id: ins.data.id }, contact));
         if (con.error) throw con.error;
+        notifyListing(ins.data.id);
       }
       draft = newDraft(); clearDraftMarker(); reloadListings(); viewDone(editing);
     } catch (e) {
@@ -1935,8 +2124,8 @@ function viewPost() {
     two(fieldOf("Area and city", bind("area", "input", { maxLength: 60, placeholder: "e.g. Madhurawada, Visakhapatnam" })), fieldOf("Price", price)),
     fieldOf("Size and details", bind("details", "input", { maxLength: 140, placeholder: "e.g. 2 BHK · 1,050 sq ft · 2nd floor" })),
     fieldOf("Description", bind("description", "textarea", { maxLength: 600, placeholder: "Anything a visitor should know" })),
-    fieldOf("YouTube video link (optional)", bind("video", "input", { type: "url", placeholder: "https://youtu.be/..." })),
-    el("span", "field-label", "Photos (optional)"), photoBox, addPhotos, photoNote,
+    el("span", "field-label", "Video tour (recommended)"), videoBox, addVideo, videoNote, ytField,
+    el("span", "field-label", "Photos"), photoBox, addPhotos, photoNote,
     two(fieldOf("Your name", bind("ownerName", "input", { maxLength: 60, autocomplete: "name" })), fieldOf("Your phone", bind("ownerPhone", "input", { type: "tel", maxLength: 15, autocomplete: "tel", inputMode: "tel" }))),
     note, el("span", "field-label", "Location on the map"), locText
   );
@@ -1981,7 +2170,7 @@ async function viewMine() {
       del.disabled = true;
       const res = await sb.from("listings").delete().eq("id", r.id);
       if (res.error) { del.disabled = false; toast("Could not delete. Try again."); return; }
-      removePhotos(r.photos);
+      removeFiles((r.photos || []).concat(isUploadedVideo(r.video) ? [r.video] : []));
       toast("Listing deleted."); reloadListings(); viewMine();
     });
     acts.append(del);
@@ -2030,10 +2219,10 @@ async function viewEnquiries(tab) {
 }
 
 /* ---- approval (admin only) ---- */
-async function setListingStatus(id, status, note) {
-  let res = await sb.from("listings").update({ status, review_note: note || null }).eq("id", id);
-  // Databases set up before review notes existed: save the status alone.
-  if (res.error && /review_note/.test(res.error.message || "")) res = await sb.from("listings").update({ status }).eq("id", id);
+async function setListingStatus(id, status, note, extra) {
+  let res = await sb.from("listings").update(Object.assign({ status, review_note: note || null }, extra || {})).eq("id", id);
+  // Databases set up before review notes or the verified flag existed: save the status alone.
+  if (res.error && /review_note|verified/.test(res.error.message || "")) res = await sb.from("listings").update({ status }).eq("id", id);
   return res;
 }
 async function viewAdmin(tab) {
@@ -2064,6 +2253,7 @@ async function viewAdmin(tab) {
     const own = el("p", "", "Owner: " + ((c && c.owner_name) || "no name") + " · " + ((c && c.owner_phone) || "no phone"));
     own.style.fontWeight = "600"; card.append(own);
     if (r.review_note) card.append(el("p", "note", "Note to owner: " + r.review_note));
+    if (r.verified && tab === "active") top.append(verifiedBadge());
     if (!isDirect(r) && [r.title, r.area, r.details, r.description].some(t => findContacts(t).length))
       card.append(el("p", "note warn", "Warning: the listing text contains a phone number, email or link. Visitors will see it hidden."));
     const links = el("div", "row");
@@ -2072,6 +2262,7 @@ async function viewAdmin(tab) {
     const vid = youtubeId(r.video);
     if (vid) { const v = el("a", "video-link", "Watch video"); v.href = "https://www.youtube.com/watch?v=" + vid; v.target = "_blank"; v.rel = "noopener"; links.append(v); }
     card.append(links);
+    if (isUploadedVideo(r.video)) card.append(videoPlayer(r.video, r.title));
     const ph = (r.photos || []).filter(u => /^https:\/\//.test(u));
     if (ph.length) {
       const th = el("div", "thumbs");
@@ -2092,15 +2283,27 @@ async function viewAdmin(tab) {
       if (res.error) { b.disabled = false; toast("Could not update. Try again."); return; }
       done(okText);
     });
+    // Verified badge: tick only after you have checked the documents yourself.
+    const ver = inp("input", { type: "checkbox", checked: !!r.verified });
+    const verRow = el("label", "check");
+    verRow.append(ver, document.createTextNode(" Documents checked (shows a Verified badge)"));
     const approve = btnEl("Approve", "btn small wa", async () => {
       approve.disabled = true;
-      const res = await setListingStatus(r.id, "active", null);
+      const res = await setListingStatus(r.id, "active", null, { verified: ver.checked });
       if (res.error) { approve.disabled = false; toast("Could not update. Try again."); return; }
       done("Approved. It is now on the map.");
     });
     if (tab === "pending") acts.append(approve, askReason("Reject", "rejected", "Rejected. The owner can see your reason."));
-    else if (tab === "active") acts.append(btnEl("View on map", "btn small", () => { closePanel(); focusListing(r.public_id); }), askReason("Remove from map", "rejected", "Removed from the map."));
-    else acts.append(approve);
+    else if (tab === "active") {
+      const vt = btnEl(r.verified ? "Remove Verified badge" : "Mark as Verified", "btn small", async () => {
+        vt.disabled = true;
+        const res = await sb.from("listings").update({ verified: !r.verified }).eq("id", r.id);
+        if (res.error) { vt.disabled = false; toast("Could not update. Run the latest supabase/schema.sql first."); return; }
+        done(r.verified ? "Verified badge removed." : "Marked as Verified.");
+      });
+      acts.append(btnEl("View on map", "btn small", () => { closePanel(); focusListing(r.public_id); }), vt, askReason("Remove from map", "rejected", "Removed from the map."));
+    } else acts.append(approve);
+    if (tab !== "active") card.append(verRow);
     card.append(reasonBox, acts); body.append(card);
   });
   body.append(btnEl("Back", "btn quiet", viewHome));

@@ -10,9 +10,9 @@
 --   * Replaces ALL access rules (row level security policies) on those
 --     three tables with the rules below, so no older, looser rule is left.
 --   * Keeps owners' phone numbers private: anyone can read a phone number
---     only for LIVE house rent listings (the "directContact" setting in
---     index.html). Sale, lease, plot and BnB numbers are visible only to
---     the owner and to admins; visitors call you and you connect them.
+--     only for LIVE rent and lease listings (the "directContact" setting
+--     in index.html). Sale and BnB numbers are visible only to the owner
+--     and to admins; those enquiries come to you.
 --   * Makes sure owners cannot approve their own listings: every listing
 --     an owner creates or edits goes to "pending" until an admin approves.
 --   * Sets up the public "photos" storage bucket; owners can upload only
@@ -71,13 +71,13 @@ returns boolean language sql stable security definer set search_path = public as
   select exists (select 1 from public.admins where user_id = auth.uid());
 $$;
 
--- Phone numbers that visitors may see: live house rent only.
+-- Phone numbers that visitors may see: live rent and lease listings only.
 create or replace function public.is_public_contact(lid uuid)
 returns boolean language sql stable security definer set search_path = public as $$
   select exists (
     select 1 from public.listings l
     where l.id = lid and l.status = 'active'
-      and l.category = 'house' and l.deal = 'rent'
+      and l.deal in ('rent', 'lease')
   );
 $$;
 

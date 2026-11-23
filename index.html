@@ -236,7 +236,9 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .contact .who { font-weight: 600; }
 .contact .num { font: 600 18px/1.2 var(--font-display); font-variant-numeric: tabular-nums; user-select: all; }
 .contact .hint { color: var(--ink-soft); font-size: 13px; }
-.contact .ref { font-size: 13px; font-weight: 600; }
+.stay { display: grid; grid-template-columns: 1fr 1fr 84px; gap: 8px; }
+.stay label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--ink-soft); min-width: 0; }
+.stay input { width: 100%; min-width: 0; padding: 10px; border: 1px solid var(--line); border-radius: 10px; background: #fff; color: var(--ink); font: inherit; font-size: 16px; }
 .btns { display: flex; flex-wrap: wrap; gap: 8px; }
 .btn {
   flex: 1 1 140px;
@@ -416,10 +418,13 @@ button.brand { border: 0; background: none; padding: 0; margin: 0; color: inheri
 
 /* ---------- List view cards ---------- */
 .lcard {
-  display: flex; gap: 12px; align-items: stretch; text-align: left; width: 100%;
-  padding: 10px; border: 1px solid var(--line); border-radius: 14px; background: #fff; color: var(--ink);
+  position: relative; display: flex; width: 100%;
+  border: 1px solid var(--line); border-radius: 14px; background: #fff; color: var(--ink);
   transition: border-color .15s ease, box-shadow .15s ease;
 }
+.lcard-open { flex: 1; min-width: 0; display: flex; gap: 12px; align-items: stretch; text-align: left; padding: 10px 46px 10px 10px; border: 0; background: none; border-radius: 14px; color: inherit; }
+.lcard .save { position: absolute; top: 8px; right: 8px; }
+.lcard-tags { display: flex; gap: 4px; flex-wrap: wrap; }
 .lcard:hover { border-color: #b9cbca; box-shadow: 0 2px 10px rgba(6,38,42,.1); }
 .lcard-cover { flex: none; width: 96px; height: 84px; border-radius: 10px; overflow: hidden; display: grid; place-items: center; color: #fff; font: 700 26px/1 var(--font-display); }
 .lcard-cover img { width: 100%; height: 100%; object-fit: cover; }
@@ -429,6 +434,27 @@ button.brand { border: 0; background: none; padding: 0; margin: 0; color: inheri
 .lcard-area { color: var(--ink-soft); font-size: 13px; }
 .lcard-price { font-weight: 700; color: var(--harbour); font-variant-numeric: tabular-nums; }
 .lcard .badge { padding: 1px 8px; font-size: 11px; }
+
+/* ---------- Contact, save, badges ---------- */
+.ico { width: 18px; height: 18px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.btn { gap: 8px; }
+.owner { display: flex; align-items: center; gap: 12px; }
+.owner > div { display: flex; flex-direction: column; min-width: 0; }
+.avatar { width: 44px; height: 44px; border-radius: 50%; flex: none; display: grid; place-items: center; background: var(--harbour); color: var(--marigold); font: 700 18px/1 var(--font-display); }
+.owner-label { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-soft); }
+.owner strong { font: 600 16px/1.3 var(--font-display); }
+.owner .num { font: 600 15px/1.3 var(--font-body); color: var(--ink-soft); font-variant-numeric: tabular-nums; user-select: all; }
+.contact .btns .btn.wa { flex-basis: 150px; }
+.head-acts { display: flex; gap: 8px; flex: none; }
+.save {
+  width: 36px; height: 36px; border-radius: 50%; border: 0; display: grid; place-items: center;
+  background: #e6eeed; color: var(--ink); padding: 0; flex: none;
+}
+.save .ico { width: 18px; height: 18px; }
+.save[aria-pressed="true"] { background: #fde3e4; color: var(--sale); }
+.save[aria-pressed="true"] .ico { fill: currentColor; }
+.badge.new { background: var(--marigold); color: var(--marigold-ink); }
+.item .note.warn { background: #fde3e4; color: #7d1b1f; font-weight: 600; }
 
 /* ---------- Account panel extras ---------- */
 .stack { display: flex; flex-direction: column; gap: 12px; }
@@ -458,6 +484,9 @@ button.brand { border: 0; background: none; padding: 0; margin: 0; color: inheri
 .tool:hover, .fab:hover { filter: brightness(.97); }
 /* The open listing card sits where the Post button is; hide the button while it is open. */
 .stage:has(.sheet:not([hidden])) .fab { display: none; }
+/* Keep messages clear of the listing card's buttons. */
+.stage:has(.sheet:not([hidden])) .toast { top: 76px; bottom: auto; }
+.age { margin: 2px 0 0; font-size: 12px; color: var(--ink-soft); }
 
 /* ---------- Leaflet essentials (fallback if the CDN stylesheet is blocked) ---------- */
 .leaflet-pane, .leaflet-tile, .leaflet-marker-icon, .leaflet-marker-shadow, .leaflet-tile-container,
@@ -573,9 +602,9 @@ const CONFIG = {
   supabaseKey: "sb_publishable_xDA3eHM8MLT1nvQJi1nHww_MHUgEk-D",
 
   // Listings where the visitor sees the owner's number and contacts them directly.
-  // Everything else shows only a "Call now" button to your number; you connect the call
-  // to the owner, so the owner's number stays private. Written as "category-deal".
-  directContact: ["house-rent"],
+  // Everything else (sale and BnB) shows only your WhatsApp and Call buttons, so the
+  // owner's number stays private and enquiries come through you. Written as "category-deal".
+  directContact: ["house-rent", "house-lease", "land-lease"],
 
   // With a Google Sheet connected, new listings appear on open maps after this many seconds.
   refreshSeconds: 60,
@@ -934,7 +963,7 @@ function renderPins() {
   if (!map) return;
   layer.clearLayers(); markers.clear();
   visible().forEach(l => {
-    const m = L.marker([l.lat, l.lng], { icon: pinIcon(l, l.id === selectedId), title: l.title + ", " + l.area, keyboard: true });
+    const m = L.marker([l.lat, l.lng], { icon: pinIcon(l, l.id === selectedId), title: shownText(l, l.title) + ", " + shownText(l, l.area), keyboard: true });
     m.on("click", ev => { L.DomEvent.stopPropagation(ev); openListing(l.id); });
     if (l.id === selectedId) m.setZIndexOffset(1000);
     m.addTo(layer); markers.set(l.id, m);
@@ -959,6 +988,76 @@ function focusListing(id) {
 }
 
 /* ---- Listing sheet ---- */
+const ICONS = {
+  chat: '<path d="M4 20l1.3-3.9A8 8 0 1 1 8 19.1z"/>',
+  phone: '<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/>',
+  pin: '<path d="M12 21s-7-6.1-7-11a7 7 0 0 1 14 0c0 4.9-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/>',
+  share: '<path d="M12 3v12M7 8l5-5 5 5M5 14v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5"/>',
+  heart: '<path d="M12 20s-7.5-4.6-9.2-9.3C1.6 7.3 4 4 7.4 4c2 0 3.5 1.1 4.6 2.7C13.1 5.1 14.6 4 16.6 4 20 4 22.4 7.3 21.2 10.7 19.5 15.4 12 20 12 20z"/>'
+};
+function icon(name) {
+  const n = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  n.setAttribute("viewBox", "0 0 24 24"); n.setAttribute("aria-hidden", "true"); n.setAttribute("class", "ico");
+  n.innerHTML = ICONS[name];
+  return n;
+}
+function waButton(label, number, message) {
+  const a = el("a", "btn wa");
+  a.append(icon("chat"), document.createTextNode(label));
+  if (!digits(number)) {
+    a.href = "#";
+    a.addEventListener("click", ev => { ev.preventDefault(); if (message()) toast("Add your WhatsApp number in the settings to switch this on."); });
+    return a;
+  }
+  a.href = waLink(number, ""); a.target = "_blank"; a.rel = "noopener";
+  a.addEventListener("click", ev => { const m = message(); if (!m) { ev.preventDefault(); return; } a.href = waLink(number, m); });
+  return a;
+}
+function callButton(label, number) {
+  const a = el("a", "btn");
+  a.append(icon("phone"), document.createTextNode(label));
+  if (digits(number)) a.href = "tel:" + (/^\s*\+/.test(number) ? "+" : "") + digits(number);
+  else { a.href = "#"; a.addEventListener("click", ev => { ev.preventDefault(); toast("Add your phone number in the settings to switch this on."); }); }
+  return a;
+}
+
+/* Saved listings, kept on this device only. */
+const SAVED_KEY = "landsnlords.saved";
+let saved = new Set();
+try { saved = new Set(JSON.parse(localStorage.getItem(SAVED_KEY) || "[]")); } catch (e) {}
+function toggleSaved(id) {
+  if (saved.has(id)) saved.delete(id); else saved.add(id);
+  try { localStorage.setItem(SAVED_KEY, JSON.stringify(Array.from(saved))); } catch (e) {}
+  return saved.has(id);
+}
+function saveButton(l) {
+  const b = el("button", "save"); b.type = "button";
+  const sync = () => { const on = saved.has(l.id); b.setAttribute("aria-pressed", String(on)); b.setAttribute("aria-label", on ? "Remove from saved" : "Save this listing"); b.title = on ? "Saved" : "Save"; };
+  b.append(icon("heart")); sync();
+  b.addEventListener("click", ev => { ev.stopPropagation(); toast(toggleSaved(l.id) ? "Saved. Find it under List > Saved." : "Removed from saved."); sync(); });
+  return b;
+}
+const DAY = 86400000;
+const isNew = l => l.listed && Date.now() - new Date(l.listed) < 7 * DAY;
+function ageText(iso) {
+  if (!iso) return "";
+  const d = Math.floor((Date.now() - new Date(iso)) / DAY);
+  if (!(d >= 0)) return "";
+  if (d === 0) return "Listed today";
+  if (d === 1) return "Listed yesterday";
+  if (d < 30) return "Listed " + d + " days ago";
+  return "Listed " + new Date(iso).toLocaleDateString("en-IN", { month: "short", year: "numeric" });
+}
+
+/* Commission guard: a phone number, email or WhatsApp link typed into the text of a
+   sale or BnB listing would let people skip us. It is refused when posting and hidden
+   on screen in case one slips through. */
+const CONTACT_RE = /(?:\+?\d[\d\s().-]{8,}\d)|(?:[\w.+-]+@[\w-]+(?:\.[\w-]+)+)|(?:wa\.me\/\S*)/gi;
+const isContact = m => /@|wa\.me/i.test(m) || digits(m).length >= 10;
+const findContacts = text => (String(text || "").match(CONTACT_RE) || []).filter(isContact);
+const hideContacts = text => String(text || "").replace(CONTACT_RE, m => isContact(m) ? "•••" : m);
+const shownText = (l, t) => isDirect(l) ? (t || "") : hideContacts(t);
+
 function openListing(id) {
   const l = listings.find(x => x.id === id);
   if (!l) return;
@@ -977,12 +1076,17 @@ function openListing(id) {
   const hl = el("div");
   const badges = el("div", "badges");
   badges.append(el("span", "badge " + l.deal, CATS[l.category].one + " · " + DEALS[l.deal].label), el("span", "badge", l.id));
+  if (isNew(l)) badges.append(el("span", "badge new", "New"));
   if (l.sample) badges.append(el("span", "badge sample", "Sample listing"));
-  hl.append(badges, el("h2", "", l.title), el("p", "where", l.area));
+  const age = ageText(l.listed);
+  hl.append(badges, el("h2", "", shownText(l, l.title)), el("p", "where", shownText(l, l.area)));
+  if (age) hl.append(el("p", "age", age));
   const x = el("button", "close", "×");
   x.type = "button"; x.setAttribute("aria-label", "Close");
   x.addEventListener("click", closeSheet);
-  head.append(hl, x);
+  const acts = el("div", "head-acts");
+  acts.append(saveButton(l), x);
+  head.append(hl, acts);
   s.append(head);
 
   if (l.photos && l.photos.length) {
@@ -998,9 +1102,9 @@ function openListing(id) {
 
   const money = el("div");
   money.append(el("div", "price", l.price || "Price on request"));
-  if (l.details) money.append(el("p", "facts", l.details));
+  if (l.details) money.append(el("p", "facts", shownText(l, l.details)));
   s.append(money);
-  if (l.description) s.append(el("p", "desc", l.description));
+  if (l.description) s.append(el("p", "desc", shownText(l, l.description)));
 
   const vid = youtubeId(l.video);
   if (vid) {
@@ -1019,42 +1123,59 @@ function openListing(id) {
 
   const c = el("div", "contact");
   const btns = el("div", "btns");
-  if (isDirect(l)) {
-    c.append(el("p", "who", "Contact the owner directly" + (l.ownerName ? ": " + l.ownerName : "")));
-    if (digits(l.ownerPhone)) {
-      c.append(el("p", "num", l.ownerPhone));
-      const call = el("a", "btn", "Call owner"); call.href = "tel:" + l.ownerPhone.replace(/[^\d+]/g, "");
-      const wa = el("a", "btn wa", "WhatsApp owner");
-      wa.href = waLink(l.ownerPhone, "Hi, I saw your " + l.title + " in " + l.area + " (" + l.id + ") on " + CONFIG.appName + ". Is it still available?");
-      wa.target = "_blank"; wa.rel = "noopener";
-      btns.append(wa, call);
-      const dir = el("a", "btn", "Directions");
-      dir.href = "https://www.google.com/maps/dir/?api=1&destination=" + l.lat + "," + l.lng;
-      dir.target = "_blank"; dir.rel = "noopener";
-      btns.append(dir);
-    } else {
-      c.append(el("p", "hint", "The owner's phone number will show here. No fee for tenants or owners."));
-    }
+  const showOwner = isDirect(l) && digits(l.ownerPhone);
+  if (showOwner) {
+    // Rent and lease: the owner's own number.
+    const who = el("div", "owner");
+    const av = el("span", "avatar", (l.ownerName || "O").trim().charAt(0).toUpperCase());
+    const t = el("div");
+    t.append(el("span", "owner-label", "Owner"), el("strong", "", l.ownerName || "Owner"), el("span", "num", l.ownerPhone));
+    who.append(av, t);
+    c.append(who);
+    btns.append(
+      waButton("WhatsApp", l.ownerPhone, () => "Hi, I saw your " + l.title + " in " + l.area + " (" + l.id + ") on " + CONFIG.appName + ". Is it still available?"),
+      callButton("Call", l.ownerPhone));
   } else {
-    // Sale, lease, BnB and plots: the visitor calls us, and we connect the call to the
-    // owner. The owner's name and number are never sent to the visitor's browser.
+    // Sale and BnB (and any listing without an owner number): enquiries come to us.
+    // The owner's name and number are never sent to the visitor's browser.
     const stay = l.deal === "bnb";
-    c.append(el("p", "who", "Call " + CONFIG.appName));
-    c.append(el("p", "hint", (stay
-      ? "We check availability with the host and connect you."
-      : "We connect your call to the owner and arrange the site visit.") + " The owner's number stays private."));
-    c.append(el("p", "ref", "Quote listing " + l.id + " when you call."));
-    const callNo = CONFIG.callNumber || CONFIG.whatsappNumber;
-    if (digits(callNo)) {
-      const call = el("a", "btn wa", "Call now");
-      call.href = "tel:" + (/^\+/.test(callNo.trim()) ? "+" : "") + digits(callNo);
-      btns.append(call);
-    } else {
-      const call = btnEl("Call now", "btn wa", () => toast("Add your phone number in the settings to switch this on."));
-      btns.append(call);
+    const base = "Hi, I'm interested in " + l.id + ": " + l.title + ", " + l.area + (l.price ? " (" + l.price + ")" : "") + ".";
+    let fIn, fOut, fGuests;
+    if (stay) {
+      const form = el("div", "stay");
+      const field = (id, label, type) => {
+        const lab = el("label", "", label), n = el("input");
+        n.type = type; n.id = id; lab.append(n); form.append(lab); return n;
+      };
+      fIn = field("stayIn", "Check-in", "date");
+      fOut = field("stayOut", "Check-out", "date");
+      fGuests = field("stayGuests", "Guests", "number");
+      const today = new Date(); today.setMinutes(today.getMinutes() - today.getTimezoneOffset());
+      fIn.min = fOut.min = today.toISOString().slice(0, 10);
+      fIn.addEventListener("change", () => { fOut.min = fIn.value || fIn.min; if (fOut.value && fOut.value <= fIn.value) fOut.value = ""; });
+      fGuests.min = "1"; fGuests.max = "30"; fGuests.value = "2";
+      c.append(form);
     }
+    const message = () => {
+      if (!stay) return base + " Please share more details.";
+      if (!fIn.value || !fOut.value) { toast("Choose your check-in and check-out dates."); return null; }
+      const nights = Math.round((new Date(fOut.value) - new Date(fIn.value)) / 86400000);
+      if (!(nights > 0)) { toast("Check-out must be after check-in."); return null; }
+      return base + " Booking request: " + fIn.value + " to " + fOut.value + " (" + nights + (nights === 1 ? " night" : " nights") + "), " + (parseInt(fGuests.value, 10) || 1) + " guests.";
+    };
+    btns.append(
+      waButton("WhatsApp", CONFIG.whatsappNumber, message),
+      callButton("Call", CONFIG.callNumber || CONFIG.whatsappNumber));
   }
-  const share = el("button", "btn quiet", "Share"); share.type = "button";
+  if (showOwner) {
+    const dir = el("a", "btn");
+    dir.append(icon("pin"), document.createTextNode("Directions"));
+    dir.href = "https://www.google.com/maps/dir/?api=1&destination=" + l.lat + "," + l.lng;
+    dir.target = "_blank"; dir.rel = "noopener";
+    btns.append(dir);
+  }
+  const share = el("button", "btn quiet"); share.type = "button";
+  share.append(icon("share"), document.createTextNode("Share"));
   share.addEventListener("click", () => shareListing(l));
   btns.append(share);
   c.append(btns);
@@ -1082,32 +1203,59 @@ function openFromHash() {
   return false;
 }
 
-/* ---- List of listings in the current map area ---- */
-function viewList() {
+/* ---- List of listings: nearest in the map area, newest, or saved ---- */
+let listMode = "near";
+function listCard(l) {
+  const card = el("div", "lcard");
+  const open = el("button", "lcard-open"); open.type = "button";
+  const cover = el("div", "lcard-cover " + l.deal);
+  if (l.photos && l.photos[0]) { const im = el("img"); im.src = l.photos[0]; im.alt = ""; im.loading = "lazy"; cover.append(im); }
+  else cover.append(el("span", "", DEALS[l.deal].letter));
+  const txt = el("div", "lcard-text");
+  const tags = el("div", "lcard-tags");
+  tags.append(el("span", "badge " + l.deal, (l.category === "land" ? "Land · " : "") + DEALS[l.deal].label));
+  if (isNew(l)) tags.append(el("span", "badge new", "New"));
+  txt.append(tags, el("strong", "", shownText(l, l.title)), el("span", "lcard-area", shownText(l, l.area)), el("span", "lcard-price", l.price || "Price on request"));
+  open.append(cover, txt);
+  open.addEventListener("click", () => { closePanel(); focusListing(l.id); });
+  card.append(open, saveButton(l));
+  return card;
+}
+function viewList(mode) {
+  if (typeof mode === "string") listMode = mode;
+  const kind = CATS[category].label.toLowerCase();
   const shown = visible();
   const bounds = map ? map.getBounds() : null;
-  let items = bounds ? shown.filter(l => bounds.contains([l.lat, l.lng])) : shown;
-  const everywhere = !items.length;
-  if (everywhere) items = shown;
-  if (map) {
-    const c = map.getCenter(), here = [c.lat, c.lng];
-    items = items.slice().sort((a, b) => km(here, [a.lat, a.lng]) - km(here, [b.lat, b.lng]));
+  let items, title, note = "";
+  if (listMode === "saved") {
+    items = listings.filter(l => saved.has(l.id));
+    title = "Saved";
+  } else if (listMode === "new") {
+    items = shown.slice().sort((a, b) => String(b.listed || "").localeCompare(String(a.listed || "")));
+    title = "Newest " + kind;
+  } else {
+    items = bounds ? shown.filter(l => bounds.contains([l.lat, l.lng])) : shown;
+    title = kind.charAt(0).toUpperCase() + kind.slice(1) + " in this area";
+    if (!items.length && shown.length) { items = shown; title = "All " + kind; note = "None in the area on your screen, so here are all of them, nearest first."; }
+    if (map) {
+      const c = map.getCenter(), here = [c.lat, c.lng];
+      items = items.slice().sort((a, b) => km(here, [a.lat, a.lng]) - km(here, [b.lat, b.lng]));
+    }
   }
-  const kind = CATS[category].label.toLowerCase();
-  const body = openPanel(items.length + " " + (dealFilter === "all" ? kind : kind + " " + DEALS[dealFilter].label.toLowerCase()) + (everywhere ? "" : " in this area"));
-  if (!shown.length) { body.append(el("p", "msg soft", "No listings in this category yet.")); return; }
-  if (everywhere && bounds) body.append(el("p", "msg soft", "None in the area on your screen, so here are all of them, nearest first."));
-  items.forEach(l => {
-    const card = el("button", "lcard"); card.type = "button";
-    const cover = el("div", "lcard-cover " + l.deal);
-    if (l.photos && l.photos[0]) { const im = el("img"); im.src = l.photos[0]; im.alt = ""; im.loading = "lazy"; cover.append(im); }
-    else cover.append(el("span", "", DEALS[l.deal].letter));
-    const txt = el("div", "lcard-text");
-    txt.append(el("span", "badge " + l.deal, DEALS[l.deal].label), el("strong", "", l.title), el("span", "lcard-area", l.area), el("span", "lcard-price", l.price || "Price on request"));
-    card.append(cover, txt);
-    card.addEventListener("click", () => { closePanel(); focusListing(l.id); });
-    body.append(card);
+  const body = openPanel(title + " (" + items.length + ")");
+  const tabs = el("div", "tabs");
+  [["near", "Nearest"], ["new", "Newest"], ["saved", "Saved" + (saved.size ? " · " + listings.filter(l => saved.has(l.id)).length : "")]].forEach(([k, label]) => {
+    const t = btnEl(label, "tab", () => viewList(k));
+    t.setAttribute("aria-pressed", String(listMode === k));
+    tabs.append(t);
   });
+  body.append(tabs);
+  if (note) body.append(el("p", "msg soft", note));
+  if (!items.length) {
+    body.append(el("p", "msg soft", listMode === "saved" ? "Tap the heart on any listing to save it here." : "No listings in this category yet."));
+    return;
+  }
+  items.forEach(l => body.append(listCard(l)));
 }
 
 /* ---- Full-screen photo viewer ---- */
@@ -1152,12 +1300,13 @@ function viewAbout() {
   const sec = (title, ...paras) => { const d = el("section", "about"); d.append(el("h3", "", title)); paras.forEach(p => d.append(el("p", "", p))); body.append(d); };
   body.append(el("p", "msg", n + " shows verified houses and lands on a satellite map, so you can see exactly where a property is before you visit."));
   sec("How it works",
-    "Houses for rent: call or WhatsApp the owner directly. No fee for tenants or owners.",
-    "Everything else (sale, lease, BnB stays and plots): call " + n + " and we connect you to the owner. The owner's number stays private.",
+    "Rent and lease: call or WhatsApp the owner directly. No fee for tenants or owners.",
+    "Houses and plots for sale, and BnB stays: WhatsApp or call " + n + ". We arrange the site visit, document check and registration.",
     "Owners: posting is free. Every listing is checked by " + n + " before it appears on the map.");
   sec("Privacy",
     "When you post a property we store your email address, the listing details and photos, and your name and phone number.",
-    "Your phone number is shown to visitors only for houses for rent. For sale, lease, stays and plots it is seen only by " + n + ".",
+    "Your phone number is shown to visitors only for rent and lease listings. For sales and stays it is seen only by " + n + ".",
+    "Listings you save with the heart are kept on your device only.",
     "The app asks for your location only to centre the map near you. It is not saved. Place searches are sent to OpenStreetMap services to find the place.",
     "You can edit or delete your listings at any time from My listings. To delete your account, contact us.");
   sec("Please note", "Listing details are provided by owners. Always check the documents and see the property in person before you pay anything.");
@@ -1213,7 +1362,7 @@ async function loadFromSupabase() {
     return {
       id: r.public_id, uid: r.id, category: r.category, deal: r.deal, title: r.title, area: r.area,
       lat: r.lat, lng: r.lng, price: r.price || "", details: r.details || "", description: r.description || "",
-      video: r.video || "", photos: (r.photos || []).filter(u => /^https:\/\//.test(u)),
+      video: r.video || "", photos: (r.photos || []).filter(u => /^https:\/\//.test(u)), listed: r.created_at || "",
       ownerName: direct ? (c.owner_name || "") : "", ownerPhone: direct ? (c.owner_phone || "") : ""
     };
   });
@@ -1442,8 +1591,8 @@ function viewPost() {
     deal.value = draft.deal;
     price.placeholder = "e.g. " + PLACEHOLDER_PRICE[draft.deal];
     note.textContent = isDirect(draft)
-      ? "Your name and phone number will be shown to people who tap your listing, so they can call you."
-      : "Your phone number stays private. Callers reach " + CONFIG.appName + " first, and we connect the call to you.";
+      ? "Your name and phone number are shown on your listing, so people can call or WhatsApp you."
+      : "Your phone number is not shown on the listing. Enquiries come to " + CONFIG.appName + " and we connect genuine buyers and guests with you.";
   };
   cat.addEventListener("change", () => { draft.category = cat.value; fillDeals(); });
   deal.addEventListener("change", () => { draft.deal = deal.value; fillDeals(); });
@@ -1511,6 +1660,8 @@ function viewPost() {
     const ph = digits(draft.ownerPhone);
     if (ph.length < 10 || ph.length > 13) return fail("Enter your 10-digit phone number.");
     if (draft.video.trim() && !youtubeId(draft.video)) return fail("The video link must be a YouTube link.");
+    if (!isDirect(draft) && ["title", "area", "details", "description"].some(k => findContacts(draft[k]).length))
+      return fail("Please remove phone numbers, emails and links from the listing text. Put your number only in \"Your phone\".");
     for (const f of draft.files) if (f.size > 25 * 1024 * 1024) return fail("One photo is very large (over 25 MB). Please choose a smaller one.");
     send.disabled = true;
     const uploaded = [];
@@ -1657,6 +1808,8 @@ async function viewAdmin(tab) {
     const own = el("p", "", "Owner: " + ((c && c.owner_name) || "no name") + " · " + ((c && c.owner_phone) || "no phone"));
     own.style.fontWeight = "600"; card.append(own);
     if (r.review_note) card.append(el("p", "note", "Note to owner: " + r.review_note));
+    if (!isDirect(r) && [r.title, r.area, r.details, r.description].some(t => findContacts(t).length))
+      card.append(el("p", "note warn", "Warning: the listing text contains a phone number, email or link. Visitors will see it hidden."));
     const links = el("div", "row");
     const map1 = el("a", "video-link", "See location on Google Maps"); map1.href = "https://www.google.com/maps?q=" + r.lat + "," + r.lng; map1.target = "_blank"; map1.rel = "noopener";
     links.append(map1);
